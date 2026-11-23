@@ -1,0 +1,131 @@
+package com.example
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ui.screens.ArrangerConsoleScreen
+import com.example.ui.theme.EthioYamahaTheme
+import com.example.viewmodel.ArrangerViewModel
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
+
+        setContent {
+            EthioYamahaTheme {
+                val vm: ArrangerViewModel = viewModel()
+                val uiState by vm.uiState.collectAsStateWithLifecycle()
+
+                // Dedicated SAF Folder Picker for Yamaha SET folders
+                val yamahaSetLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.OpenDocumentTree()
+                ) { treeUri ->
+                    if (treeUri != null) vm.importYamahaSetFolder(treeUri)
+                }
+
+                // Dedicated SAF Folder Picker for ORG.SET folders
+                val orgSetLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.OpenDocumentTree()
+                ) { treeUri ->
+                    if (treeUri != null) vm.importOrgSetFolder(treeUri)
+                }
+
+                // SAF Single File Picker for .sty, .prs, .sst, .mid, .wav samples
+                val singleFileLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.OpenDocument()
+                ) { fileUri ->
+                    if (fileUri != null) vm.importSingleStyleOrSample(fileUri)
+                }
+
+                ArrangerConsoleScreen(
+                    state = uiState,
+                    onOpenScreen = vm::openScreen,
+                    onExitToPerformance = vm::exitToPerformance,
+                    onTogglePanelLock = vm::togglePanelLock,
+                    onPianoKeyDown = vm::onPianoKeyDown,
+                    onPianoKeyUp = vm::onPianoKeyUp,
+                    onScrollKeyboardToMidi = vm::scrollKeyboardToMidi,
+                    onShiftKeyboardOctaveView = vm::shiftVisibleKeyboardOctave,
+                    onPitchBend = vm::onPitchBend,
+                    onStartStop = vm::onStartStopPressed,
+                    onSyncStart = vm::onSyncStartPressed,
+                    onSyncStop = vm::onSyncStopPressed,
+                    onAutoFill = vm::onAutoFillPressed,
+                    onIntro = vm::onIntroPressed,
+                    onMainVariation = vm::onMainVariationPressed,
+                    onBreak = vm::onBreakPressed,
+                    onEnding = vm::onEndingPressed,
+                    onFadeInOut = vm::onFadeInOutPressed,
+                    onAdjustTempo = vm::adjustTempo,
+                    onTapTempo = vm::onTapTempo,
+                    onResetTempo = vm::resetTempoToStyleDefault,
+                    onToggleSustain = vm::toggleSustain,
+                    onTogglePartEnabled = vm::togglePartEnabled,
+                    onToggleHarmony = vm::toggleHarmonyEnabled,
+                    onToggleDsp = vm::toggleDsp,
+                    onToggleReverbQuick = vm::toggleReverbQuick,
+                    onToggleChorusQuick = vm::toggleChorusQuick,
+                    onSelectOts = vm::selectOtsSlot,
+                    onToggleMemoryStore = vm::toggleMemoryStoreMode,
+                    onStepRegSequence = vm::stepRegistrationSequence,
+                    onRegistrationPressed = vm::onRegistrationSlotPressed,
+                    onRegistrationLongPressed = vm::saveRegistrationSlot,
+                    onSelectRegBank = vm::selectRegistrationBank,
+                    onToggleRegFreeze = vm::toggleRegistrationFreeze,
+                    onMultiPadPressed = vm::onMultiPadPressed,
+                    onStopAllMultiPads = vm::stopAllMultiPads,
+                    onToggleChordLooperRecord = vm::toggleChordLooperRecord,
+                    onToggleChordLooperPlay = vm::toggleChordLooperPlay,
+                    onClearChordLoop = vm::clearChordLoop,
+                    onSetMasterVolume = vm::setMasterVolume,
+                    onSetAcmpBalance = vm::setAcmpBalance,
+                    onSetStyleVolume = vm::setStyleVolume,
+                    onSetChannelVolume = vm::setChannelVolume,
+                    onSetChannelPan = vm::setChannelPan,
+                    onToggleChannelMute = vm::toggleChannelMute,
+                    onSetReverbDepth = vm::setReverbDepth,
+                    onSetChorusDepth = vm::setChorusDepth,
+                    onSetEqBass = vm::setEqBass,
+                    onSetEqMid = vm::setEqMid,
+                    onSetEqTreble = vm::setEqTreble,
+                    onSetMasterTuneHz = vm::setMasterTuneHz,
+                    onSetAudioBufferFrames = vm::setAudioBufferFrames,
+                    onCycleStyle = vm::cycleStyle,
+                    onImportYamahaSetClick = { yamahaSetLauncher.launch(null) },
+                    onImportOrgSetClick = { orgSetLauncher.launch(null) },
+                    onImportSingleFileClick = { singleFileLauncher.launch(arrayOf("*/*")) },
+                    onSelectStyle = vm::selectStyleFromLibrary,
+                    onRemoveSource = vm::removeImportedSource,
+                    onRemoveStyle = vm::removeImportedStyle,
+                    onSelectPartVoice = vm::selectPartVoice,
+                    onSetPartVolume = vm::setPartVolume,
+                    onSetPartPan = vm::setPartPan,
+                    onSetPartOctave = vm::setPartOctave,
+                    onSetPartNoteRange = vm::setPartNoteRange,
+                    onSetKeyboardLayout = vm::setKeyboardLayout,
+                    onSetKeyboardHeightRatio = vm::setKeyboardHeightRatio,
+                    onSetVisibleWhiteKeys = vm::setVisibleWhiteKeys,
+                    onSetVelocityCurve = vm::setVelocityCurve,
+                    onSetChordMode = vm::setChordMode,
+                    onSetSplitNote = vm::setSplitNote,
+                    onSetShowKeyLabels = vm::setShowKeyLabels,
+                    onSetShowScrollbar = vm::setShowKeyboardScrollbar,
+                    onLoadWorshipSong = vm::loadWorshipSong,
+                    onAddWorshipSong = vm::saveCurrentAsWorshipSong,
+                    onDeleteWorshipSong = vm::deleteWorshipSong
+                )
+            }
+        }
+    }
+}

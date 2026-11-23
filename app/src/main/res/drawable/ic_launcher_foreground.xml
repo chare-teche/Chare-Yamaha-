@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Arranger top bezel strip -->
+    <path
+        android:fillColor="#FF2D3340"
+        android:pathData="M24,30 L84,30 Q87,30 87,33 L87,49 L21,49 L21,33 Q21,30 24,30 Z" />
+    <!-- Signature magenta-crimson TFT LCD display -->
+    <path
+        android:fillColor="#FFE91E63"
+        android:pathData="M43,34 L65,34 L65,38 L43,38 Z" />
+    <path
+        android:fillColor="#FF1B2B44"
+        android:pathData="M43,38 L65,38 L65,45 L43,45 Z" />
+    <!-- Glowing amber/cyan LED indicators -->
+    <path
+        android:fillColor="#FFFFAB40"
+        android:pathData="M26,37 L31,37 L31,40 L26,40 Z M34,37 L39,37 L39,40 L34,40 Z" />
+    <path
+        android:fillColor="#FF29B6F6"
+        android:pathData="M69,37 L74,37 L74,40 L69,40 Z M77,37 L82,37 L82,40 L77,40 Z" />
+    <!-- Crimson felt keybed bar -->
+    <path
+        android:fillColor="#FFD32F2F"
+        android:pathData="M21,49 L87,49 L87,52 L21,52 Z" />
+    <!-- White piano keys -->
+    <path
+        android:fillColor="#FFF5F7FA"
+        android:pathData="M21,52 L31,52 L31,77 Q31,79 29,79 L23,79 Q21,79 21,77 Z" />
+    <path
+        android:fillColor="#FFF5F7FA"
+        android:pathData="M32.2,52 L42.2,52 L42.2,77 Q42.2,79 40.2,79 L34.2,79 Q32.2,79 32.2,77 Z" />
+    <path
+        android:fillColor="#FFF5F7FA"
+        android:pathData="M43.4,52 L53.4,52 L53.4,77 Q53.4,79 51.4,79 L45.4,79 Q43.4,79 43.4,77 Z" />
+    <path
+        android:fillColor="#FFF5F7FA"
+        android:pathData="M54.6,52 L64.6,52 L64.6,77 Q64.6,79 62.6,79 L56.6,79 Q54.6,79 54.6,77 Z" />
+    <path
+        android:fillColor="#FFF5F7FA"
+        android:pathData="M65.8,52 L75.8,52 L75.8,77 Q75.8,79 73.8,79 L67.8,79 Q65.8,79 65.8,77 Z" />
+    <path
+        android:fillColor="#FFF5F7FA"
+        android:pathData="M77,52 L87,52 L87,77 Q87,79 85,79 L79,79 Q77,79 77,77 Z" />
+    <!-- Glossy black sharp keys -->
+    <path
+        android:fillColor="#FF14171D"
+        android:pathData="M28.5,52 L34.5,52 L34.5,68 Q34.5,69.5 33,69.5 L30,69.5 Q28.5,69.5 28.5,68 Z" />
+    <path
+        android:fillColor="#FF14171D"
+        android:pathData="M39.8,52 L45.8,52 L45.8,68 Q45.8,69.5 44.3,69.5 L41.3,69.5 Q39.8,69.5 39.8,68 Z" />
+    <path
+        android:fillColor="#FF14171D"
+        android:pathData="M62.2,52 L68.2,52 L68.2,68 Q68.2,69.5 66.7,69.5 L63.7,69.5 Q62.2,69.5 62.2,68 Z" />
+    <path
+        android:fillColor="#FF14171D"
+        android:pathData="M73.5,52 L79.5,52 L79.5,68 Q79.5,69.5 78,69.5 L75,69.5 Q73.5,69.5 73.5,68 Z" />
+</vector>

@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Ethio Yamaha</string>
+    <string name="hardware_badge">ETHIO YAMAHA</string>
+    <string name="hardware_subtitle">ARRANGER WORKSTATION</string>
+    <string name="disclaimer_notice">Independent third-party arranger keyboard application. Not affiliated with or endorsed by Yamaha Corporation.</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_menu">Main Menu</string>
+    <string name="cd_exit">Exit to Performance Screen</string>
+    <string name="cd_style_library">Style and SET Library</string>
+    <string name="cd_voice_select">Voice Selection</string>
+    <string name="cd_mixer">Mixer and Audio Settings</string>
+    <string name="cd_settings">System Settings</string>
+    <string name="cd_start_stop">Start or Stop Accompaniment</string>
+    <string name="cd_jog_dial">Data Entry Jog Dial</string>
+    <string name="cd_pitch_joystick">Pitch Bend and Modulation Joystick</string>
+</resources>
