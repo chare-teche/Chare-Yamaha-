@@ -25,6 +25,8 @@ import com.example.domain.model.KeyboardLayoutRange
 import com.example.domain.model.KeyboardNoteRouter
 import com.example.domain.model.KeyboardPartConfig
 import com.example.domain.model.KeyboardPartTarget
+import com.example.domain.model.RegistrationFreezeTarget
+import com.example.domain.model.RegistrationSequenceStep
 import com.example.domain.model.RegistrationSlotUi
 import com.example.domain.model.SplitChordMode
 import com.example.domain.model.StyleDefinition
@@ -95,6 +97,8 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
     private val heldChordZoneNotes = mutableSetOf<Int>()
     private val tapTimestamps = ArrayDeque<Long>()
     private var bannerJob: Job? = null
+    private var preSoloAccompMutes: Map<AccompPart, Boolean> = emptyMap()
+    private var preSoloKeyboardEnabled: Map<KeyboardPartTarget, Boolean> = emptyMap()
 
     init {
         val started = synthEngine.start()
@@ -176,6 +180,38 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
 
     fun exitToPerformance() {
         _uiState.update { it.copy(activeScreen = ArrangerScreen.PERFORMANCE) }
+    }
+
+    fun setMainMenuPage(page: Int) {
+        _uiState.update { it.copy(mainMenuPage = page.coerceIn(1, 2)) }
+    }
+
+    fun toggleMainMenuPage() {
+        _uiState.update { it.copy(mainMenuPage = if (it.mainMenuPage == 1) 2 else 1) }
+    }
+
+    // --- Style & Voice Browser Search / Favorites ---
+
+    fun setStyleSearchQuery(query: String) {
+        _uiState.update { it.copy(styleSearchQuery = query) }
+    }
+
+    fun toggleFavoriteStyle(styleId: String) {
+        _uiState.update { s ->
+            val next = if (styleId in s.favoriteStyleIds) s.favoriteStyleIds - styleId else s.favoriteStyleIds + styleId
+            s.copy(favoriteStyleIds = next)
+        }
+    }
+
+    fun setVoiceSearchQuery(query: String) {
+        _uiState.update { it.copy(voiceSearchQuery = query) }
+    }
+
+    fun toggleFavoriteVoice(voiceId: String) {
+        _uiState.update { s ->
+            val next = if (voiceId in s.favoriteVoiceIds) s.favoriteVoiceIds - voiceId else s.favoriteVoiceIds + voiceId
+            s.copy(favoriteVoiceIds = next)
+        }
     }
 
     // --- Piano Keyboard, Velocity Curves, Multi-Part Voices & Chord Detection ---
@@ -535,14 +571,66 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun togglePartEnabled(part: KeyboardPartTarget) {
+        preSoloKeyboardEnabled = emptyMap()
         val nextEnabled = !_uiState.value.partConfig(part).isEnabled
         if (!nextEnabled) {
             // Release only voices belonging to this part so other active layers keep sounding
             synthEngine.releaseTagRange(part.tagBase, part.tagBase + 999L)
         }
         updateKeyboardPart(part) { it.copy(isEnabled = nextEnabled) }
+        _uiState.update { it.copy(soloedKeyboardPart = null) }
         val voiceName = _uiState.value.partConfig(part).voice.name
         showBanner(if (nextEnabled) "${part.label} ON: $voiceName" else "${part.label} OFF")
+    }
+
+    fun toggleKeyboardPartSolo(target: KeyboardPartTarget) {
+        val state = _uiState.value
+        if (state.soloedKeyboardPart == target) {
+            clearKeyboardPartSolo()
+            return
+        }
+        if (state.soloedKeyboardPart == null) {
+            preSoloKeyboardEnabled = state.allKeyboardParts.mapValues { it.value.isEnabled }
+        }
+        KeyboardPartTarget.entries.forEach { p ->
+            if (p != target) {
+                synthEngine.releaseTagRange(p.tagBase, p.tagBase + 999L)
+            }
+        }
+        _uiState.update { s ->
+            s.copy(
+                leftPart = s.leftPart.copy(isEnabled = target == KeyboardPartTarget.LEFT),
+                right1Part = s.right1Part.copy(isEnabled = target == KeyboardPartTarget.RIGHT_1),
+                right2Part = s.right2Part.copy(isEnabled = target == KeyboardPartTarget.RIGHT_2),
+                right3Part = s.right3Part.copy(isEnabled = target == KeyboardPartTarget.RIGHT_3),
+                soloedKeyboardPart = target
+            )
+        }
+        showBanner("Solo: ${target.label}")
+    }
+
+    fun clearKeyboardPartSolo() {
+        val snapshot = preSoloKeyboardEnabled
+        preSoloKeyboardEnabled = emptyMap()
+        _uiState.update { s ->
+            if (s.soloedKeyboardPart == null) return@update s
+            val leftOn = snapshot[KeyboardPartTarget.LEFT] ?: s.leftPart.isEnabled
+            val r1On = snapshot[KeyboardPartTarget.RIGHT_1] ?: s.right1Part.isEnabled
+            val r2On = snapshot[KeyboardPartTarget.RIGHT_2] ?: s.right2Part.isEnabled
+            val r3On = snapshot[KeyboardPartTarget.RIGHT_3] ?: s.right3Part.isEnabled
+            if (!leftOn) synthEngine.releaseTagRange(KeyboardPartTarget.LEFT.tagBase, KeyboardPartTarget.LEFT.tagBase + 999L)
+            if (!r1On) synthEngine.releaseTagRange(KeyboardPartTarget.RIGHT_1.tagBase, KeyboardPartTarget.RIGHT_1.tagBase + 999L)
+            if (!r2On) synthEngine.releaseTagRange(KeyboardPartTarget.RIGHT_2.tagBase, KeyboardPartTarget.RIGHT_2.tagBase + 999L)
+            if (!r3On) synthEngine.releaseTagRange(KeyboardPartTarget.RIGHT_3.tagBase, KeyboardPartTarget.RIGHT_3.tagBase + 999L)
+            s.copy(
+                leftPart = s.leftPart.copy(isEnabled = leftOn),
+                right1Part = s.right1Part.copy(isEnabled = r1On),
+                right2Part = s.right2Part.copy(isEnabled = r2On),
+                right3Part = s.right3Part.copy(isEnabled = r3On),
+                soloedKeyboardPart = null
+            )
+        }
+        showBanner("Keyboard Solo OFF")
     }
 
     fun selectPartVoice(part: KeyboardPartTarget, voice: VoicePreset) {
@@ -672,11 +760,109 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleRegistrationFreeze() {
         _uiState.update { it.copy(isRegistrationFreezeEnabled = !it.isRegistrationFreezeEnabled) }
-        showBanner(if (_uiState.value.isRegistrationFreezeEnabled) "Registration FREEZE ON (Tempo/Transpose locked)" else "Registration FREEZE OFF")
+        val s = _uiState.value
+        showBanner(
+            if (s.isRegistrationFreezeEnabled) "Registration FREEZE ON (${s.activeFreezeTargetsSummary})"
+            else "Registration FREEZE OFF"
+        )
+    }
+
+    fun setRegistrationFreezeTarget(target: RegistrationFreezeTarget, enabled: Boolean) {
+        _uiState.update { s ->
+            when (target) {
+                RegistrationFreezeTarget.STYLE -> s.copy(freezeStyle = enabled)
+                RegistrationFreezeTarget.VOICE -> s.copy(freezeVoice = enabled)
+                RegistrationFreezeTarget.TEMPO -> s.copy(freezeTempo = enabled)
+                RegistrationFreezeTarget.TRANSPOSE -> s.copy(freezeTranspose = enabled)
+                RegistrationFreezeTarget.SPLIT -> s.copy(freezeSplit = enabled)
+            }
+        }
+    }
+
+    fun toggleRegistrationFreezeTarget(target: RegistrationFreezeTarget) {
+        val next = !_uiState.value.isFreezeTargetEnabled(target)
+        setRegistrationFreezeTarget(target, next)
+    }
+
+    fun toggleRegistrationSequenceEnabled() {
+        _uiState.update { s ->
+            val next = !s.isRegistrationSequenceEnabled
+            s.copy(isRegistrationSequenceEnabled = next)
+        }
+    }
+
+    fun setRegistrationSequenceEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(isRegistrationSequenceEnabled = enabled) }
+    }
+
+    fun addRegistrationSequenceStep(bankNumber: Int, slotNumber: Int) {
+        val step = RegistrationSequenceStep(
+            bankNumber = bankNumber.coerceIn(1, 4),
+            slotNumber = slotNumber.coerceIn(1, 8)
+        )
+        _uiState.update { s ->
+            s.copy(
+                registrationSequence = s.registrationSequence + step,
+                isRegistrationSequenceEnabled = true
+            )
+        }
+    }
+
+    fun removeRegistrationSequenceStepAt(index: Int) {
+        _uiState.update { s ->
+            if (index !in s.registrationSequence.indices) return@update s
+            val updated = s.registrationSequence.toMutableList().apply { removeAt(index) }
+            val nextIdx = if (updated.isEmpty()) 0 else s.activeSequenceIndex.coerceIn(0, updated.lastIndex)
+            s.copy(registrationSequence = updated, activeSequenceIndex = nextIdx)
+        }
+    }
+
+    fun moveRegistrationSequenceStep(fromIndex: Int, toIndex: Int) {
+        _uiState.update { s ->
+            val list = s.registrationSequence
+            if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return@update s
+            val mutable = list.toMutableList()
+            val item = mutable.removeAt(fromIndex)
+            mutable.add(toIndex, item)
+            s.copy(registrationSequence = mutable)
+        }
+    }
+
+    fun clearRegistrationSequence() {
+        _uiState.update {
+            it.copy(
+                registrationSequence = emptyList(),
+                activeSequenceIndex = 0,
+                isRegistrationSequenceEnabled = false
+            )
+        }
+    }
+
+    fun jumpToRegistrationSequenceStep(index: Int) {
+        val s = _uiState.value
+        val step = s.registrationSequence.getOrNull(index) ?: return
+        _uiState.update { it.copy(activeSequenceIndex = index, activeRegistrationBank = step.bankNumber) }
+        refreshVisibleRegistrationBank()
+        recallRegistrationSlot(step.slotNumber, explicitBank = step.bankNumber)
     }
 
     fun stepRegistrationSequence(delta: Int) {
-        val current = _uiState.value.activeRegistrationSlot ?: 1
+        val state = _uiState.value
+        if (state.isRegistrationSequenceEnabled && state.registrationSequence.isNotEmpty()) {
+            val size = state.registrationSequence.size
+            val nextIndex = ((state.activeSequenceIndex + delta) % size + size) % size
+            val step = state.registrationSequence[nextIndex]
+            _uiState.update {
+                it.copy(
+                    activeSequenceIndex = nextIndex,
+                    activeRegistrationBank = step.bankNumber
+                )
+            }
+            refreshVisibleRegistrationBank()
+            recallRegistrationSlot(step.slotNumber, explicitBank = step.bankNumber)
+            return
+        }
+        val current = state.activeRegistrationSlot ?: 1
         val next = ((current - 1 + delta + 8) % 8) + 1
         recallRegistrationSlot(next)
     }
@@ -752,8 +938,8 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun recallRegistrationSlot(slotNumber: Int) {
-        val bank = _uiState.value.activeRegistrationBank
+    private fun recallRegistrationSlot(slotNumber: Int, explicitBank: Int? = null) {
+        val bank = explicitBank ?: _uiState.value.activeRegistrationBank
         viewModelScope.launch {
             val saved = repository.getRegistrationSlot(bank, slotNumber)
             if (saved == null) {
@@ -761,22 +947,50 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
                 return@launch
             }
             val state = _uiState.value
-            val (loadedStyle, err) = repository.loadStyleDefinition(saved.styleId)
-            val styleToUse = loadedStyle ?: BuiltInStyleBank.defaultStyle()
+            val freeze = state.isRegistrationFreezeEnabled
+            val keepStyle = freeze && state.freezeStyle
+            val keepVoice = freeze && state.freezeVoice
+            val keepTempo = freeze && state.freezeTempo
+            val keepTranspose = freeze && state.freezeTranspose
+            val keepSplit = freeze && state.freezeSplit
+
+            val nextTempo = if (keepTempo || state.isTempoLocked) state.tempoBpm else saved.tempoBpm
+            val nextTranspose = if (keepTranspose) state.transposeSemitones else saved.transposeSemitones
+
+            var styleErr: String? = null
+            val styleNameForBanner: String
             val section = runCatching { ArrangerSection.valueOf(saved.sectionName) }.getOrDefault(ArrangerSection.MAIN_A)
 
-            val freeze = state.isRegistrationFreezeEnabled
-            val nextTempo = if (freeze && state.freezeTempo) state.tempoBpm else saved.tempoBpm
-            val nextTranspose = if (freeze && state.freezeTranspose) state.transposeSemitones else saved.transposeSemitones
+            if (!keepStyle) {
+                val (loadedStyle, err) = repository.loadStyleDefinition(saved.styleId)
+                styleErr = err
+                val styleToUse = loadedStyle ?: BuiltInStyleBank.defaultStyle()
+                styleNameForBanner = styleToUse.name
+                applyStyle(styleToUse, overrideTempo = nextTempo)
+                sequencer.updateAcmpEnabled(saved.acmpEnabled)
+            } else {
+                styleNameForBanner = state.activeStyle.name
+                if (!keepTempo && !state.isTempoLocked) {
+                    setTempo(saved.tempoBpm)
+                }
+            }
 
-            applyStyle(styleToUse, overrideTempo = nextTempo)
-            sequencer.updateTranspose(nextTranspose)
-            sequencer.updateAcmpEnabled(saved.acmpEnabled)
+            if (!keepTranspose) {
+                sequencer.updateTranspose(nextTranspose)
+            }
+
+            if (!keepVoice) {
+                preSoloKeyboardEnabled = emptyMap()
+                KeyboardPartTarget.entries.forEach { target ->
+                    synthEngine.releaseTagRange(target.tagBase, target.tagBase + 999L)
+                }
+            }
 
             _uiState.update { s ->
                 s.copy(
+                    activeRegistrationBank = bank,
                     activeRegistrationSlot = slotNumber,
-                    right1Part = KeyboardPartConfig(
+                    right1Part = if (keepVoice) s.right1Part else KeyboardPartConfig(
                         part = KeyboardPartTarget.RIGHT_1,
                         voice = BuiltInVoices.byId(saved.right1VoiceId, s.userSampleVoices),
                         isEnabled = saved.isRight1Enabled,
@@ -786,7 +1000,7 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
                         lowNoteMidi = saved.right1LowMidi.coerceIn(21, 108),
                         highNoteMidi = saved.right1HighMidi.coerceIn(21, 108)
                     ),
-                    right2Part = KeyboardPartConfig(
+                    right2Part = if (keepVoice) s.right2Part else KeyboardPartConfig(
                         part = KeyboardPartTarget.RIGHT_2,
                         voice = BuiltInVoices.byId(saved.right2VoiceId, s.userSampleVoices),
                         isEnabled = saved.isRight2Enabled,
@@ -796,7 +1010,7 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
                         lowNoteMidi = saved.right2LowMidi.coerceIn(21, 108),
                         highNoteMidi = saved.right2HighMidi.coerceIn(21, 108)
                     ),
-                    right3Part = KeyboardPartConfig(
+                    right3Part = if (keepVoice) s.right3Part else KeyboardPartConfig(
                         part = KeyboardPartTarget.RIGHT_3,
                         voice = BuiltInVoices.byId(saved.right3VoiceId, s.userSampleVoices),
                         isEnabled = saved.isRight3Enabled,
@@ -806,7 +1020,7 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
                         lowNoteMidi = saved.right3LowMidi.coerceIn(21, 108),
                         highNoteMidi = saved.right3HighMidi.coerceIn(21, 108)
                     ),
-                    leftPart = KeyboardPartConfig(
+                    leftPart = if (keepVoice) s.leftPart else KeyboardPartConfig(
                         part = KeyboardPartTarget.LEFT,
                         voice = BuiltInVoices.byId(saved.leftVoiceId, s.userSampleVoices),
                         isEnabled = saved.isLeftEnabled,
@@ -816,17 +1030,18 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
                         lowNoteMidi = saved.leftLowMidi.coerceIn(21, 108),
                         highNoteMidi = saved.leftHighMidi.coerceIn(21, 108)
                     ),
-                    splitNoteMidi = saved.splitNoteMidi,
+                    soloedKeyboardPart = if (keepVoice) s.soloedKeyboardPart else null,
+                    splitNoteMidi = if (keepSplit) s.splitNoteMidi else saved.splitNoteMidi,
                     transposeSemitones = nextTranspose,
-                    octaveShift = saved.octaveShift,
-                    activeOtsSlot = saved.activeOtsSlot,
-                    isAcmpEnabled = saved.acmpEnabled,
-                    isSplitEnabled = saved.splitEnabled,
-                    targetMainSection = section,
-                    activeSection = if (s.isPlaying) s.activeSection else section
+                    octaveShift = if (keepSplit) s.octaveShift else saved.octaveShift,
+                    activeOtsSlot = if (keepVoice) s.activeOtsSlot else saved.activeOtsSlot,
+                    isAcmpEnabled = if (keepStyle) s.isAcmpEnabled else saved.acmpEnabled,
+                    isSplitEnabled = if (keepSplit) s.isSplitEnabled else saved.splitEnabled,
+                    targetMainSection = if (keepStyle) s.targetMainSection else section,
+                    activeSection = if (keepStyle || s.isPlaying) s.activeSection else section
                 )
             }
-            showBanner(err ?: "Loaded Bank $bank Regist $slotNumber: ${styleToUse.name}")
+            showBanner(styleErr ?: "Loaded Bank $bank Regist $slotNumber: $styleNameForBanner")
         }
     }
 
@@ -966,17 +1181,65 @@ class ArrangerViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleChannelMute(part: AccompPart) {
+        val wasSoloActive = _uiState.value.soloedAccompPart != null
+        val snapshot = preSoloAccompMutes
+        preSoloAccompMutes = emptyMap()
         _uiState.update { s ->
             s.copy(
+                soloedAccompPart = null,
                 mixerChannels = s.mixerChannels.map { ch ->
-                    if (ch.part == part) {
-                        val muted = !ch.isMuted
-                        synthEngine.setPartMuted(part, muted)
-                        ch.copy(isMuted = muted)
-                    } else ch
+                    val baseMuted = if (wasSoloActive) (snapshot[ch.part] ?: false) else ch.isMuted
+                    val nextMuted = if (ch.part == part) !baseMuted else baseMuted
+                    synthEngine.setPartMuted(ch.part, nextMuted)
+                    ch.copy(isMuted = nextMuted, isSoloed = false)
                 }
             )
         }
+    }
+
+    fun toggleChannelSolo(part: AccompPart) {
+        val state = _uiState.value
+        if (state.soloedAccompPart == part) {
+            clearAccompSolo()
+            return
+        }
+        if (state.soloedAccompPart == null) {
+            preSoloAccompMutes = state.mixerChannels.associate { it.part to it.isMuted }
+        }
+        val snapshot = preSoloAccompMutes
+        _uiState.update { s ->
+            s.copy(
+                soloedAccompPart = part,
+                mixerChannels = s.mixerChannels.map { ch ->
+                    val nextMuted = when {
+                        part.isAccompanimentBus && ch.part.isAccompanimentBus -> ch.part != part
+                        part.isAccompanimentBus && !ch.part.isAccompanimentBus -> snapshot[ch.part] ?: false
+                        else -> ch.part != part
+                    }
+                    synthEngine.setPartMuted(ch.part, nextMuted)
+                    ch.copy(isMuted = nextMuted, isSoloed = ch.part == part)
+                }
+            )
+        }
+        showBanner("Channel Solo: ${part.psrChannelName}")
+    }
+
+    fun clearAccompSolo() {
+        val state = _uiState.value
+        if (state.soloedAccompPart == null) return
+        val snapshot = preSoloAccompMutes
+        preSoloAccompMutes = emptyMap()
+        _uiState.update { s ->
+            s.copy(
+                soloedAccompPart = null,
+                mixerChannels = s.mixerChannels.map { ch ->
+                    val restoredMuted = snapshot[ch.part] ?: false
+                    synthEngine.setPartMuted(ch.part, restoredMuted)
+                    ch.copy(isMuted = restoredMuted, isSoloed = false)
+                }
+            )
+        }
+        showBanner("Channel Solo OFF")
     }
 
     // --- Separate Yamaha SET & ORG.SET Library Importers ---

@@ -4,27 +4,27 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Arranger top bezel strip -->
+    <!-- Arranger top bezel strip (dark graphite metallic) -->
     <path
-        android:fillColor="#FF2D3340"
+        android:fillColor="#FF232936"
         android:pathData="M24,30 L84,30 Q87,30 87,33 L87,49 L21,49 L21,33 Q21,30 24,30 Z" />
-    <!-- Signature magenta-crimson TFT LCD display -->
+    <!-- Electric-blue TFT LCD header & deep dark screen -->
     <path
-        android:fillColor="#FFE91E63"
+        android:fillColor="#FF1E90FF"
         android:pathData="M43,34 L65,34 L65,38 L43,38 Z" />
     <path
-        android:fillColor="#FF1B2B44"
+        android:fillColor="#FF0D1422"
         android:pathData="M43,38 L65,38 L65,45 L43,45 Z" />
-    <!-- Glowing amber/cyan LED indicators -->
+    <!-- Champagne-gold & electric-blue LED indicators -->
     <path
-        android:fillColor="#FFFFAB40"
+        android:fillColor="#FFD8B45A"
         android:pathData="M26,37 L31,37 L31,40 L26,40 Z M34,37 L39,37 L39,40 L34,40 Z" />
     <path
-        android:fillColor="#FF29B6F6"
+        android:fillColor="#FF38B6FF"
         android:pathData="M69,37 L74,37 L74,40 L69,40 Z M77,37 L82,37 L82,40 L77,40 Z" />
-    <!-- Crimson felt keybed bar -->
+    <!-- Champagne-gold keybed accent trim -->
     <path
-        android:fillColor="#FFD32F2F"
+        android:fillColor="#FFD4AF37"
         android:pathData="M21,49 L87,49 L87,52 L21,52 Z" />
     <!-- White piano keys -->
     <path
@@ -47,15 +47,15 @@
         android:pathData="M77,52 L87,52 L87,77 Q87,79 85,79 L79,79 Q77,79 77,77 Z" />
     <!-- Glossy black sharp keys -->
     <path
-        android:fillColor="#FF14171D"
+        android:fillColor="#FF11141A"
         android:pathData="M28.5,52 L34.5,52 L34.5,68 Q34.5,69.5 33,69.5 L30,69.5 Q28.5,69.5 28.5,68 Z" />
     <path
-        android:fillColor="#FF14171D"
+        android:fillColor="#FF11141A"
         android:pathData="M39.8,52 L45.8,52 L45.8,68 Q45.8,69.5 44.3,69.5 L41.3,69.5 Q39.8,69.5 39.8,68 Z" />
     <path
-        android:fillColor="#FF14171D"
+        android:fillColor="#FF11141A"
         android:pathData="M62.2,52 L68.2,52 L68.2,68 Q68.2,69.5 66.7,69.5 L63.7,69.5 Q62.2,69.5 62.2,68 Z" />
     <path
-        android:fillColor="#FF14171D"
+        android:fillColor="#FF11141A"
         android:pathData="M73.5,52 L79.5,52 L79.5,68 Q79.5,69.5 78,69.5 L75,69.5 Q73.5,69.5 73.5,68 Z" />
 </vector>

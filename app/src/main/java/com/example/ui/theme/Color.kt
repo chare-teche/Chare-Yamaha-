@@ -2,7 +2,36 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// PSR-SX900 Brushed Anodized Dark Aluminum Chassis
+// Stage 3 ETHIO YAMAHA Workstation Identity (Dark Graphite + Champagne Gold + Electric Blue)
+val GraphiteVoid = Color(0xFF0A0C10)
+val GraphiteBase = Color(0xFF12161E)
+val GraphitePanel = Color(0xFF191E28)
+val GraphiteElevated = Color(0xFF232A37)
+val GraphiteBorder = Color(0xFF343E50)
+
+val LcdBackdrop = Color(0xFF0B1018)
+val LcdHeaderSurface = Color(0xFF141C2B)
+val LcdModuleSurface = Color(0xFF161F2E)
+val LcdModuleBorder = Color(0xFF2C3A52)
+
+val ChampagneGold = Color(0xFFD8B45A)
+val ChampagneGoldBright = Color(0xFFEBD089)
+val ChampagneGoldMuted = Color(0xFF8C7235)
+val ChampagneGoldContainer = Color(0xFF352B14)
+
+val ElectricBlue = Color(0xFF2B8EFF)
+val ElectricBlueGlow = Color(0xFF63B3FF)
+val ElectricBlueContainer = Color(0xFF122845)
+
+val TextPrimary = Color(0xFFF3F6FB)
+val TextSecondary = Color(0xFFA9B4C6)
+val TextMuted = Color(0xFF7B879B)
+
+val StatusLiveGreen = Color(0xFF38C985)
+val StatusWarningAmber = Color(0xFFF0AD4E)
+val StatusAlertRed = Color(0xFFE55365)
+
+// Legacy PSR-SX900 Brushed Anodized Dark Aluminum Chassis (preserved for migration safety)
 val ChassisVoid = Color(0xFF07090D)
 val ChassisDark = Color(0xFF101319)
 val ChassisPanel = Color(0xFF171B23)

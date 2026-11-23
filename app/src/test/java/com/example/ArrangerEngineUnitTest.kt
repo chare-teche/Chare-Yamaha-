@@ -297,6 +297,112 @@ class ArrangerEngineUnitTest {
         )
     }
 
+    @Test
+    fun stage3aFoundation_exposesScreensEightAccompChannelsFreezeTargetsAndSequenceModel() {
+        // 1. Verify all 13 new PSR-SX900 screen destinations + 7 existing screens exist
+        val screens = com.example.domain.model.ArrangerScreen.entries.toSet()
+        val expectedNew = listOf(
+            com.example.domain.model.ArrangerScreen.MAIN_MENU,
+            com.example.domain.model.ArrangerScreen.CHANNEL_ON_OFF,
+            com.example.domain.model.ArrangerScreen.VOICE_PART_SETUP,
+            com.example.domain.model.ArrangerScreen.SPLIT_FINGERING,
+            com.example.domain.model.ArrangerScreen.REGISTRATION_MEMORY,
+            com.example.domain.model.ArrangerScreen.REGISTRATION_FREEZE,
+            com.example.domain.model.ArrangerScreen.REGISTRATION_SEQUENCE,
+            com.example.domain.model.ArrangerScreen.STYLE_SETTINGS,
+            com.example.domain.model.ArrangerScreen.SONG_PLAYER,
+            com.example.domain.model.ArrangerScreen.SONG_RECORDING,
+            com.example.domain.model.ArrangerScreen.MIDI_SETTINGS,
+            com.example.domain.model.ArrangerScreen.FILE_MANAGER,
+            com.example.domain.model.ArrangerScreen.SYSTEM_SETTINGS
+        )
+        assertTrue(screens.containsAll(expectedNew))
+        assertEquals(20, screens.size)
+
+        // 2. Preserve all 9 engine buses and expose the 8 accompaniment channels with PSR names
+        assertEquals(9, AccompPart.entries.size)
+        val state = com.example.domain.model.ArrangerUiState(activeStyle = BuiltInStyleBank.defaultStyle())
+        assertEquals(9, state.mixerChannels.size)
+        assertEquals(8, state.eightAccompChannels.size)
+        assertFalse(state.eightAccompChannels.any { it.part == AccompPart.RIGHT_VOICE })
+        assertEquals("Rhythm 1", AccompPart.DRUMS.psrChannelName)
+        assertEquals("Rhythm 2", AccompPart.PERCUSSION.psrChannelName)
+
+        // 3. Verify granular Freeze defaults and lookup
+        assertTrue(state.isFreezeTargetEnabled(com.example.domain.model.RegistrationFreezeTarget.TEMPO))
+        assertTrue(state.isFreezeTargetEnabled(com.example.domain.model.RegistrationFreezeTarget.TRANSPOSE))
+        assertFalse(state.isFreezeTargetEnabled(com.example.domain.model.RegistrationFreezeTarget.STYLE))
+        assertFalse(state.isFreezeTargetEnabled(com.example.domain.model.RegistrationFreezeTarget.VOICE))
+        assertFalse(state.isFreezeTargetEnabled(com.example.domain.model.RegistrationFreezeTarget.SPLIT))
+        assertEquals("Tempo, Transpose", state.activeFreezeTargetsSummary)
+
+        // 4. Verify Registration Sequence step formatting and default menu/search state
+        val step = com.example.domain.model.RegistrationSequenceStep(bankNumber = 2, slotNumber = 5)
+        assertEquals("B2-5", step.shortLabel)
+        assertEquals(1, state.mainMenuPage)
+        assertEquals("", state.styleSearchQuery)
+        assertEquals("", state.voiceSearchQuery)
+        assertNull(state.soloedAccompPart)
+        assertNull(state.soloedKeyboardPart)
+    }
+
+    @Test
+    fun psrFullReferenceGeometry_matchesExact1280x591PngAnd29KeyHitTesting() {
+        val geom = com.example.ui.components.PsrFullReferenceGeometry
+        assertEquals(1280f, geom.FULL_WIDTH_PX, 0.001f)
+        assertEquals(591f, geom.FULL_HEIGHT_PX, 0.001f)
+        assertEquals(1280f / 591f, geom.FULL_ASPECT_RATIO, 0.0001f)
+
+        // Exact 17 white keys (C3=48 .. E5=76) + 12 black keys (2+3+2+3+2 grouping) = 29 keys
+        assertEquals(17, geom.WHITE_KEYS.size)
+        assertEquals(12, geom.BLACK_KEYS.size)
+        assertEquals(
+            listOf(48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76),
+            geom.WHITE_KEYS.map { it.midiNote }
+        )
+        assertEquals(
+            listOf(49, 51, 54, 56, 58, 61, 63, 66, 68, 70, 73, 75),
+            geom.BLACK_KEYS.map { it.midiNote }
+        )
+        assertEquals(0f, geom.WHITE_KEYS.first().leftPx, 0.001f)
+        assertEquals(1280f, geom.WHITE_KEYS.last().rightPx, 0.001f)
+        for (i in 0 until geom.WHITE_KEYS.size - 1) {
+            assertEquals(geom.WHITE_KEYS[i].rightPx, geom.WHITE_KEYS[i + 1].leftPx, 0.001f)
+        }
+
+        // Hit-testing every white key in the lower half (normY = 0.80f)
+        for (wk in geom.WHITE_KEYS) {
+            val centerNormX = ((wk.leftPx + wk.rightPx) * 0.5f) / geom.FULL_WIDTH_PX
+            assertEquals(wk.midiNote, geom.hitTestPianoKey(centerNormX, 0.80f))
+        }
+
+        // Hit-testing every black key in the upper half (normY = 0.15f) prioritizes black over white
+        for (bk in geom.BLACK_KEYS) {
+            val centerNormX = ((bk.leftPx + bk.rightPx) * 0.5f) / geom.FULL_WIDTH_PX
+            assertEquals(bk.midiNote, geom.hitTestPianoKey(centerNormX, 0.15f))
+        }
+
+        // Out of bounds returns null
+        assertNull(geom.hitTestPianoKey(-0.05f, 0.5f))
+        assertNull(geom.hitTestPianoKey(1.05f, 0.5f))
+        assertNull(geom.hitTestPianoKey(0.5f, -0.1f))
+        assertNull(geom.hitTestPianoKey(0.5f, 1.1f))
+
+        // Verify all 29 PNG keys route cleanly through default 4-part KeyboardNoteRouter
+        val defaultState = com.example.domain.model.ArrangerUiState(activeStyle = BuiltInStyleBank.defaultStyle())
+        for (midi in 48..76) {
+            val routed = com.example.domain.model.KeyboardNoteRouter.routeKeyDown(
+                rawMidiNote = midi,
+                splitNoteMidi = defaultState.splitNoteMidi,
+                isSplitEnabled = defaultState.isSplitEnabled,
+                globalOctaveShift = defaultState.octaveShift,
+                transposeSemitones = defaultState.transposeSemitones,
+                parts = defaultState.allKeyboardParts
+            )
+            assertTrue("Expected MIDI $midi to route to >= 1 active keyboard part", routed.isNotEmpty())
+        }
+    }
+
     private fun buildMinimalSmfStyle(withCasm: Boolean): ByteArray {
         val track = ByteArrayOutputStream().apply {
             // Delta 0, Meta 0x51 Tempo = 500000 us (120 BPM)

@@ -5,27 +5,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Piano
-import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,18 +30,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.ArrangerScreen
 import com.example.domain.model.ArrangerUiState
-import com.example.ui.theme.ChassisVoid
+import com.example.domain.model.KeyboardPartTarget
+import com.example.ui.theme.ChampagneGold
+import com.example.ui.theme.ChampagneGoldBright
+import com.example.ui.theme.ElectricBlue
+import com.example.ui.theme.ElectricBlueGlow
 import com.example.ui.theme.InterFamily
 import com.example.ui.theme.JetBrainsMonoFamily
+import com.example.ui.theme.LcdBackdrop
 import com.example.ui.theme.LcdDockBg
-import com.example.ui.theme.LcdScreenBg
-import com.example.ui.theme.LcdTopBarBg
+import com.example.ui.theme.LcdHeaderSurface
 import com.example.ui.theme.LedAmber
 import com.example.ui.theme.LedEmerald
 import com.example.ui.theme.PsrActiveOrange
-import com.example.ui.theme.PsrNeonBlueGlow
-import com.example.ui.theme.SilkscreenMuted
 import com.example.ui.theme.SpaceGroteskFamily
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TileChordBottom
 import com.example.ui.theme.TileChordTop
 import com.example.ui.theme.TileRegistBottom
@@ -63,369 +56,312 @@ import com.example.ui.theme.TileVoiceBottom
 import com.example.ui.theme.TileVoiceTop
 
 /**
- * Authentic Yamaha PSR-SX900 Home Touchscreen Display matching the reference image:
- * - Black glass bezel with Home top bar
- * - 2x2 vibrant gradient tiles: Style (Sunset Orange), Voice (Cobalt Blue), Chord (Violet), Registration (Emerald Green)
- * - Middle dark telemetry bar: Tempo | Time Sig | Measure | Beat
- * - 6-icon bottom touchscreen dock: Style, Voice, Song, Multi Pad, Playlist, Audio
+ * High-contrast live performance LCD rendered directly inside the PSR-SX900 skin screen bezel.
+ * Adapts smoothly from compact phone skin (~140x75dp) up to full tablet dimensions without clipping.
  */
 @Composable
 fun CenterLcdDisplay(
     state: ArrangerUiState,
     onOpenScreen: (ArrangerScreen) -> Unit,
     onTapTempo: () -> Unit,
+    dialTargetLabel: String = "TEMPO",
     modifier: Modifier = Modifier
 ) {
-    val bezelShape = RoundedCornerShape(7.dp)
-    Column(
+    BoxWithConstraints(
         modifier = modifier
-            .clip(bezelShape)
-            .background(ChassisVoid)
-            .border(1.5.dp, Color(0xFF3A4354), bezelShape)
-            .padding(2.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(LcdBackdrop)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(5.dp))
-                .background(LcdScreenBg)
-        ) {
-            // 1. LCD Top Status Bar ("Home" + R1/R2 + Audio/Offline status)
+        val compact = maxHeight < 105.dp
+        val topBarH = if (compact) 13.dp else 18.dp
+        val telemetryH = if (compact) 15.dp else 23.dp
+        val dockH = if (compact) 13.dp else 20.dp
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 1. LCD Top Status Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(18.dp)
-                    .background(LcdTopBarBg)
-                    .padding(horizontal = 6.dp),
+                    .height(topBarH)
+                    .background(LcdHeaderSurface)
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                Text(
+                    text = state.statusBanner ?: "ETHIO YAMAHA",
+                    color = if (state.statusBanner != null) LedAmber else ChampagneGoldBright,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (compact) 6.5.sp else 8.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Home,
-                        contentDescription = null,
-                        tint = PsrNeonBlueGlow,
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Text(
-                        text = if (state.statusBanner != null) state.statusBanner else "Home",
-                        color = if (state.statusBanner != null) LedAmber else Color.White,
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 8.5.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (state.isPanelLocked) {
-                        Text("LOCKED", color = PsrActiveOrange, fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Bold, fontSize = 7.5.sp)
-                    }
-                    if (state.isRight2Enabled || state.isRight3Enabled) {
-                        Text(state.activeRightPartsSummary, color = PsrNeonBlueGlow, fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Bold, fontSize = 7.5.sp)
+                        Text(
+                            text = "LOCK",
+                            color = PsrActiveOrange,
+                            fontFamily = JetBrainsMonoFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (compact) 6.sp else 7.5.sp
+                        )
                     }
                     Text(
-                        text = if (state.connectedMidiDevices.isNotEmpty()) "MIDI" else "LOCAL",
-                        color = LedEmerald,
+                        text = if (state.isAcmpEnabled) "ACMP" else "FREE",
+                        color = if (state.isAcmpEnabled) ElectricBlueGlow else TextMuted,
                         fontFamily = JetBrainsMonoFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 7.5.sp
+                        fontSize = if (compact) 6.sp else 7.5.sp
                     )
-                }
-            }
-
-            // 2. Top Row of 2x2 Vibrant Gradient Tiles: STYLE (Orange) & VOICE (Blue)
-            Row(
-                modifier = Modifier
-                    .weight(1.08f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // STYLE TILE — Warm Sunset Orange Gradient
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Brush.linearGradient(listOf(TileStyleTop, TileStyleBottom)))
-                        .testTag("lcd_style_card")
-                        .clickable { onOpenScreen(ArrangerScreen.STYLE_LIBRARY) }
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = Color(0x33FFFFFF),
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .size(34.dp)
-                    )
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Style",
-                                color = Color(0xFFFFE5CC),
-                                fontFamily = InterFamily,
-                                fontSize = 7.5.sp
-                            )
-                            Text(
-                                text = state.activeSection.displayLabel,
-                                color = Color.White,
-                                fontFamily = JetBrainsMonoFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 7.sp
+                    // 8-channel compact activity indicator dots
+                    Row(horizontalArrangement = Arrangement.spacedBy(1.5.dp)) {
+                        state.eightAccompChannels.forEach { ch ->
+                            Box(
+                                modifier = Modifier
+                                    .size(if (compact) 3.dp else 4.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when {
+                                            ch.isMuted -> Color(0xFF3A3F4B)
+                                            state.isPlaying -> LedEmerald
+                                            else -> ElectricBlue.copy(alpha = 0.7f)
+                                        }
+                                    )
                             )
                         }
-                        Text(
-                            text = state.activeStyle.name,
-                            color = Color.White,
-                            fontFamily = SpaceGroteskFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = state.activeStyle.category,
-                            color = Color(0xFFFFDFC2),
-                            fontFamily = InterFamily,
-                            fontSize = 7.5.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                // VOICE TILE — Vibrant Cobalt Blue Gradient
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Brush.linearGradient(listOf(TileVoiceTop, TileVoiceBottom)))
-                        .testTag("lcd_voice_card")
-                        .clickable { onOpenScreen(ArrangerScreen.VOICE_SELECT) }
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Piano,
-                        contentDescription = null,
-                        tint = Color(0x33FFFFFF),
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .size(34.dp)
-                    )
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Voice",
-                                color = Color(0xFFD1E9FF),
-                                fontFamily = InterFamily,
-                                fontSize = 7.5.sp
-                            )
-                            Text(
-                                text = state.activeRightPartsSummary,
-                                color = Color.White,
-                                fontFamily = JetBrainsMonoFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 7.sp
-                            )
-                        }
-                        Text(
-                            text = state.right1Voice.name,
-                            color = Color.White,
-                            fontFamily = SpaceGroteskFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        val secondaryLayerText = buildList {
-                            if (state.isRight2Enabled) add("R2:${state.right2Voice.name.take(10)}")
-                            if (state.isRight3Enabled) add("R3:${state.right3Voice.name.take(10)}")
-                        }.joinToString(" + ").ifEmpty {
-                            if (state.isLeftVoiceEnabled) "L: ${state.leftVoice.name}" else "LEFT OFF"
-                        }
-                        Text(
-                            text = secondaryLayerText,
-                            color = Color(0xFFCCE6FF),
-                            fontFamily = InterFamily,
-                            fontSize = 7.5.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
             }
 
-            // 3. Middle Dark Telemetry Strip: Tempo | Time Sig | Measure | Beat
+            // 2. Top Row Modules: STYLE & 4-PART VOICES
             Row(
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
-                    .height(27.dp)
-                    .background(Color(0xFF0A0E16))
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 2.dp, vertical = 1.5.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                TelemetryCell(
-                    label = "♩ Tempo",
-                    value = "${state.tempoBpm}",
-                    valueColor = Color.White,
-                    modifier = Modifier.weight(1f).clickable(onClick = onTapTempo)
-                )
-                TelemetryCell(
-                    label = "Time Sig",
-                    value = state.activeStyle.timeSignatureLabel,
-                    valueColor = Color.White,
-                    modifier = Modifier.weight(1f)
-                )
-                TelemetryCell(
-                    label = "Measure",
-                    value = state.measureNumber.toString().padStart(3, '0'),
-                    valueColor = Color.White,
-                    modifier = Modifier.weight(1f)
-                )
-                TelemetryCell(
-                    label = "Beat",
-                    value = "${state.currentBeat}",
-                    valueColor = if (state.isPlaying && state.currentBeat == 1) PsrActiveOrange else PsrNeonBlueGlow,
-                    modifier = Modifier.weight(0.8f)
-                )
-            }
-
-            // 4. Bottom Row of 2x2 Vibrant Gradient Tiles: CHORD (Violet) & REGISTRATION (Emerald Green)
-            Row(
-                modifier = Modifier
-                    .weight(0.85f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // CHORD TILE — Deep Electric Violet Gradient
+                // STYLE Tile
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Brush.linearGradient(listOf(TileChordTop, TileChordBottom)))
-                        .testTag("lcd_chord_card")
-                        .clickable { onOpenScreen(ArrangerScreen.MULTI_PAD_LOOPER) }
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Brush.linearGradient(listOf(TileStyleTop, TileStyleBottom)))
+                        .testTag("lcd_style_card")
+                        .clickable { onOpenScreen(ArrangerScreen.STYLE_LIBRARY) }
+                        .padding(horizontal = 4.dp, vertical = 1.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Chord", color = Color(0xFFE0D1FF), fontFamily = InterFamily, fontSize = 7.5.sp)
                         Text(
-                            text = if (state.isChordLooperPlaying) "LOOP" else "TR ${if (state.transposeSemitones >= 0) "+" else ""}${state.transposeSemitones}",
-                            color = Color(0xFFEDE4FF),
+                            text = "STYLE",
+                            color = Color(0xFFFFE5CC),
+                            fontFamily = InterFamily,
+                            fontSize = if (compact) 5.5.sp else 7.sp
+                        )
+                        Text(
+                            text = state.queuedSection?.shortLabel?.let { "${state.activeSection.shortLabel}→$it" }
+                                ?: state.activeSection.displayLabel,
+                            color = Color.White,
                             fontFamily = JetBrainsMonoFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 7.sp
+                            fontSize = if (compact) 5.8.sp else 7.sp,
+                            maxLines = 1
                         )
                     }
+                    Text(
+                        text = state.activeStyle.name,
+                        color = Color.White,
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (compact) 8.5.sp else 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // VOICE / 4-PART Tile
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Brush.linearGradient(listOf(TileVoiceTop, TileVoiceBottom)))
+                        .testTag("lcd_voice_card")
+                        .clickable { onOpenScreen(ArrangerScreen.VOICE_SELECT) }
+                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val activeLabels = KeyboardPartTarget.entries.filter { state.partConfig(it).isEnabled }
+                            .joinToString("·") { it.shortLabel }
+                            .ifEmpty { "OFF" }
+                        Text(
+                            text = activeLabels,
+                            color = ChampagneGoldBright,
+                            fontFamily = JetBrainsMonoFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (compact) 5.5.sp else 7.sp,
+                            maxLines = 1
+                        )
+                    }
+                    Text(
+                        text = state.right1Voice.name,
+                        color = Color.White,
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (compact) 8.5.sp else 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // 3. Telemetry Strip: BPM / SIG / BAR.BEAT / DIAL MODE
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(telemetryH)
+                    .background(Color(0xFF070A10))
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "♩${state.tempoBpm}",
+                    color = TextPrimary,
+                    fontFamily = JetBrainsMonoFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (compact) 7.5.sp else 9.5.sp,
+                    modifier = Modifier.clickable(onClick = onTapTempo)
+                )
+                Text(
+                    text = state.activeStyle.timeSignatureLabel,
+                    color = ChampagneGold,
+                    fontFamily = JetBrainsMonoFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (compact) 7.sp else 9.sp
+                )
+                Text(
+                    text = "${state.measureNumber.toString().padStart(3, '0')}.${state.currentBeat}",
+                    color = if (state.isPlaying && state.currentBeat == 1) PsrActiveOrange else ElectricBlueGlow,
+                    fontFamily = JetBrainsMonoFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (compact) 7.5.sp else 9.5.sp
+                )
+                Text(
+                    text = "$dialTargetLabel TR${if (state.transposeSemitones >= 0) "+" else ""}${state.transposeSemitones}",
+                    color = TextMuted,
+                    fontFamily = JetBrainsMonoFamily,
+                    fontSize = if (compact) 5.8.sp else 7.5.sp,
+                    maxLines = 1
+                )
+            }
+
+            // 4. Bottom Row Modules: CHORD & REGISTRATION MEMORY
+            Row(
+                modifier = Modifier
+                    .weight(0.95f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 2.dp, vertical = 1.5.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                // CHORD Tile
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Brush.linearGradient(listOf(TileChordTop, TileChordBottom)))
+                        .testTag("lcd_chord_card")
+                        .clickable { onOpenScreen(ArrangerScreen.MULTI_PAD_LOOPER) }
+                        .padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = state.detectedChord.displayName,
                         color = Color.White,
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        maxLines = 1
+                        fontSize = if (compact) 9.sp else 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = if (state.isChordLooperPlaying) "LOOP" else "OCT${if (state.octaveShift >= 0) "+" else ""}${state.octaveShift}",
+                        color = Color(0xFFE0D1FF),
+                        fontFamily = JetBrainsMonoFamily,
+                        fontSize = if (compact) 5.5.sp else 7.sp
                     )
                 }
 
-                // REGISTRATION TILE — Rich Emerald Green Gradient
-                Column(
+                // REGISTRATION Tile
+                Row(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(3.dp))
                         .background(Brush.linearGradient(listOf(TileRegistTop, TileRegistBottom)))
                         .testTag("lcd_regist_card")
-                        .clickable { onOpenScreen(ArrangerScreen.PLAYLIST) }
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .clickable { onOpenScreen(ArrangerScreen.REGISTRATION_MEMORY) }
+                        .padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Registration", color = Color(0xFFD5F5D8), fontFamily = InterFamily, fontSize = 7.5.sp)
-                        if (state.isRegistrationFreezeEnabled) {
-                            Text("FREEZE", color = Color(0xFFFFF59D), fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Bold, fontSize = 7.sp)
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = "Bank ${state.activeRegistrationBank}",
-                            color = Color.White,
-                            fontFamily = SpaceGroteskFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
-                        )
-                        Text(
-                            text = "Regist ${state.activeRegistrationSlot ?: "-"}",
-                            color = Color(0xFFE6FFE8),
-                            fontFamily = SpaceGroteskFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 9.5.sp
-                        )
-                    }
+                    Text(
+                        text = "B${state.activeRegistrationBank}-R${state.activeRegistrationSlot ?: "-"}",
+                        color = Color.White,
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (compact) 8.5.sp else 10.5.sp,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = if (state.isRegistrationFreezeEnabled) "FRZ" else "REG",
+                        color = if (state.isRegistrationFreezeEnabled) Color(0xFFFFF59D) else Color(0xFFD5F5D8),
+                        fontFamily = JetBrainsMonoFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (compact) 5.8.sp else 7.5.sp
+                    )
                 }
             }
 
-            // 5. Bottom 6-Icon PSR-SX900 Touchscreen Dock Bar
+            // 5. Compact Interactive Dock Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(25.dp)
-                    .background(LcdDockBg)
-                    .padding(horizontal = 2.dp),
+                    .height(dockH)
+                    .background(LcdDockBg),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LcdDockItem("Style", Icons.Default.LibraryMusic, true, "dock_style", Modifier.weight(1f)) {
+                LcdDockChip("Style", state.activeScreen == ArrangerScreen.STYLE_LIBRARY, "dock_style", compact, Modifier.weight(1f)) {
                     onOpenScreen(ArrangerScreen.STYLE_LIBRARY)
                 }
-                LcdDockItem("Voice", Icons.Default.Piano, false, "dock_voice", Modifier.weight(1f)) {
+                LcdDockChip("Voice", state.activeScreen == ArrangerScreen.VOICE_SELECT, "dock_voice", compact, Modifier.weight(1f)) {
                     onOpenScreen(ArrangerScreen.VOICE_SELECT)
                 }
-                LcdDockItem("Song", Icons.Default.MusicNote, false, "dock_song", Modifier.weight(1f)) {
-                    onOpenScreen(ArrangerScreen.PLAYLIST)
+                LcdDockChip("Parts", state.activeScreen == ArrangerScreen.VOICE_PART_SETUP, "dock_parts", compact, Modifier.weight(1f)) {
+                    onOpenScreen(ArrangerScreen.VOICE_PART_SETUP)
                 }
-                LcdDockItem("Multi Pad", Icons.Default.GridView, state.activeMultiPadSlots.isNotEmpty(), "dock_pad", Modifier.weight(1f)) {
-                    onOpenScreen(ArrangerScreen.MULTI_PAD_LOOPER)
-                }
-                LcdDockItem("Playlist", Icons.Default.QueueMusic, false, "dock_playlist", Modifier.weight(1f)) {
-                    onOpenScreen(ArrangerScreen.PLAYLIST)
-                }
-                LcdDockItem("Audio", Icons.Default.Tune, false, "dock_audio", Modifier.weight(1f)) {
+                LcdDockChip("Mix", state.activeScreen == ArrangerScreen.MIXER, "dock_audio", compact, Modifier.weight(1f)) {
                     onOpenScreen(ArrangerScreen.MIXER)
+                }
+                LcdDockChip("Menu", state.activeScreen == ArrangerScreen.MAIN_MENU, "dock_menu", compact, Modifier.weight(1f)) {
+                    onOpenScreen(ArrangerScreen.MAIN_MENU)
                 }
             }
         }
@@ -433,64 +369,27 @@ fun CenterLcdDisplay(
 }
 
 @Composable
-private fun TelemetryCell(
+private fun LcdDockChip(
     label: String,
-    value: String,
-    valueColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = label,
-            color = SilkscreenMuted,
-            fontFamily = InterFamily,
-            fontSize = 6.8.sp,
-            maxLines = 1
-        )
-        Text(
-            text = value,
-            color = valueColor,
-            fontFamily = JetBrainsMonoFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 10.5.sp,
-            lineHeight = 11.5.sp,
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun LcdDockItem(
-    label: String,
-    icon: ImageVector,
     highlighted: Boolean,
     tag: String,
+    compact: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxHeight()
             .testTag(tag)
             .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (highlighted) PsrNeonBlueGlow else Color(0xFFD0D9E8),
-            modifier = Modifier.size(11.dp)
-        )
         Text(
             text = label,
-            color = if (highlighted) PsrNeonBlueGlow else Color(0xFFB7C3D6),
+            color = if (highlighted) ChampagneGoldBright else Color(0xFFC5D0E2),
             fontFamily = InterFamily,
-            fontSize = 6.5.sp,
+            fontWeight = if (highlighted) FontWeight.Bold else FontWeight.Medium,
+            fontSize = if (compact) 6.sp else 7.5.sp,
             maxLines = 1,
             overflow = TextOverflow.Clip
         )

@@ -482,23 +482,31 @@ enum class ArrangerSection(val shortLabel: String, val displayLabel: String) {
     }
 }
 
-enum class AccompPart(val label: String, val shortLabel: String) {
-    DRUMS("Drum Kit", "DRUM"),
-    PERCUSSION("Percussion", "PERC"),
-    BASS("Bass", "BASS"),
-    CHORD_1("Chord 1", "CHD1"),
-    CHORD_2("Chord 2", "CHD2"),
-    PAD("Pad / Strings", "PAD"),
-    PHRASE_1("Phrase 1", "PHR1"),
-    PHRASE_2("Phrase 2", "PHR2"),
-    RIGHT_VOICE("Right 1/2", "RGT")
+enum class AccompPart(
+    val label: String,
+    val shortLabel: String,
+    val psrChannelName: String
+) {
+    DRUMS("Drum Kit", "DRUM", "Rhythm 1"),
+    PERCUSSION("Percussion", "PERC", "Rhythm 2"),
+    BASS("Bass", "BASS", "Bass"),
+    CHORD_1("Chord 1", "CHD1", "Chord 1"),
+    CHORD_2("Chord 2", "CHD2", "Chord 2"),
+    PAD("Pad / Strings", "PAD", "Pad"),
+    PHRASE_1("Phrase 1", "PHR1", "Phrase 1"),
+    PHRASE_2("Phrase 2", "PHR2", "Phrase 2"),
+    RIGHT_VOICE("Right 1/2", "RGT", "Right Voice Bus");
+
+    val isAccompanimentBus: Boolean
+        get() = this != RIGHT_VOICE
 }
 
 data class MixerChannelState(
     val part: AccompPart,
     val volume: Float = 0.82f,
     val pan: Float = 0f, // -1f Left .. +1f Right
-    val isMuted: Boolean = false
+    val isMuted: Boolean = false,
+    val isSoloed: Boolean = false
 )
 
 enum class ChordQuality(val suffix: String, val intervals: IntArray) {
@@ -632,12 +640,41 @@ enum class SplitChordMode(val displayName: String, val description: String) {
 
 enum class ArrangerScreen(val title: String) {
     PERFORMANCE("Home"),
+    MAIN_MENU("Main Menu"),
     STYLE_LIBRARY("Style & SET Library"),
     VOICE_SELECT("Voice & Part Selection"),
+    VOICE_PART_SETUP("Voice Part Setup"),
+    CHANNEL_ON_OFF("Channel On/Off"),
     MIXER("Mixer & DSP Effects"),
+    SPLIT_FINGERING("Split & Fingering"),
+    REGISTRATION_MEMORY("Registration Memory"),
+    REGISTRATION_FREEZE("Registration Freeze"),
+    REGISTRATION_SEQUENCE("Registration Sequence"),
+    STYLE_SETTINGS("Style Settings"),
     PLAYLIST("Church Worship & Regist"),
     MULTI_PAD_LOOPER("Multi Pads & Chord Looper"),
-    SETTINGS("Utility, Keyboard & MIDI")
+    SONG_PLAYER("Song Player"),
+    SONG_RECORDING("Song Recording"),
+    MIDI_SETTINGS("MIDI"),
+    FILE_MANAGER("File Manager"),
+    SETTINGS("Utility, Keyboard & MIDI"),
+    SYSTEM_SETTINGS("System Settings")
+}
+
+enum class RegistrationFreezeTarget(val displayName: String, val description: String) {
+    STYLE("Style", "Keep current Style and accompaniment pattern during Registration recall"),
+    VOICE("Voice", "Keep current LEFT and RIGHT 1–3 voices, volumes, pans, octaves, and ranges"),
+    TEMPO("Tempo", "Keep current BPM instead of switching to the saved Registration tempo"),
+    TRANSPOSE("Transpose", "Keep current master transpose semitones during Registration recall"),
+    SPLIT("Split & Fingering", "Keep current split point, split toggle, and global octave shift")
+}
+
+data class RegistrationSequenceStep(
+    val bankNumber: Int, // 1..4
+    val slotNumber: Int  // 1..8
+) {
+    val shortLabel: String
+        get() = "B$bankNumber-$slotNumber"
 }
 
 data class RegistrationSlotUi(
@@ -701,6 +738,7 @@ data class ChordLoopStep(
 
 data class ArrangerUiState(
     val activeScreen: ArrangerScreen = ArrangerScreen.PERFORMANCE,
+    val mainMenuPage: Int = 1, // 1 or 2
     val isPanelLocked: Boolean = false,
     val activeStyle: StyleDefinition,
     val activeSection: ArrangerSection = ArrangerSection.MAIN_A,
@@ -722,6 +760,11 @@ data class ArrangerUiState(
     val currentBeat: Int = 1,
     val beatsPerBar: Int = 4,
     val detectedChord: DetectedChord = DetectedChord.DEFAULT_C_MAJOR,
+    // Style & Voice Browser Filters (Stage 3A foundation)
+    val styleSearchQuery: String = "",
+    val favoriteStyleIds: Set<String> = emptySet(),
+    val voiceSearchQuery: String = "",
+    val favoriteVoiceIds: Set<String> = emptySet(),
     // Four-Part Keyboard Architecture (LEFT + RIGHT 1 + RIGHT 2 + RIGHT 3)
     val right1Part: KeyboardPartConfig = KeyboardPartConfig(
         part = KeyboardPartTarget.RIGHT_1,
@@ -763,26 +806,34 @@ data class ArrangerUiState(
         lowNoteMidi = 21,
         highNoteMidi = 108
     ),
+    val soloedKeyboardPart: KeyboardPartTarget? = null,
     val isHarmonyEnabled: Boolean = false,
     val userSampleVoices: List<VoicePreset> = emptyList(),
-    // OTS & Registrations (4 Banks × 8 Slots + Freeze)
+    // OTS & Registrations (4 Banks × 8 Slots + Granular Freeze + Custom Sequence)
     val activeOtsSlot: Int = 1,
     val isOtsLinkEnabled: Boolean = false,
     val activeRegistrationBank: Int = 1, // 1..4
     val activeRegistrationSlot: Int? = 1,
     val isMemoryStoreArmed: Boolean = false,
     val isRegistrationFreezeEnabled: Boolean = false,
+    val freezeStyle: Boolean = false,
+    val freezeVoice: Boolean = false,
     val freezeTempo: Boolean = true,
     val freezeTranspose: Boolean = true,
+    val freezeSplit: Boolean = false,
     val registrationSlots: List<RegistrationSlotUi> = (1..8).map { RegistrationSlotUi(1, it) },
+    val registrationSequence: List<RegistrationSequenceStep> = emptyList(),
+    val activeSequenceIndex: Int = 0,
+    val isRegistrationSequenceEnabled: Boolean = false,
     // Multi-Pads & Chord Looper
     val activeMultiPadSlots: Set<Int> = emptySet(),
     val multiPads: List<MultiPadPreset> = emptyList(),
     val isChordLooperRecording: Boolean = false,
     val isChordLooperPlaying: Boolean = false,
     val chordLoopSteps: List<ChordLoopStep> = emptyList(),
-    // Mixer & DSP Effects
+    // Mixer & DSP Effects (8 Accompaniment buses + shared RIGHT_VOICE bus)
     val mixerChannels: List<MixerChannelState> = AccompPart.entries.map { MixerChannelState(it) },
+    val soloedAccompPart: AccompPart? = null,
     val masterVolume: Float = 0.85f,
     val acmpBalance: Float = 0.55f,
     val styleVolume: Float = 0.82f,
@@ -834,6 +885,23 @@ data class ArrangerUiState(
             KeyboardPartTarget.RIGHT_2 to right2Part,
             KeyboardPartTarget.RIGHT_3 to right3Part
         )
+
+    val eightAccompChannels: List<MixerChannelState>
+        get() = mixerChannels.filter { it.part.isAccompanimentBus }
+
+    fun isFreezeTargetEnabled(target: RegistrationFreezeTarget): Boolean = when (target) {
+        RegistrationFreezeTarget.STYLE -> freezeStyle
+        RegistrationFreezeTarget.VOICE -> freezeVoice
+        RegistrationFreezeTarget.TEMPO -> freezeTempo
+        RegistrationFreezeTarget.TRANSPOSE -> freezeTranspose
+        RegistrationFreezeTarget.SPLIT -> freezeSplit
+    }
+
+    val activeFreezeTargetsSummary: String
+        get() {
+            val active = RegistrationFreezeTarget.entries.filter { isFreezeTargetEnabled(it) }
+            return if (active.isEmpty()) "None" else active.joinToString(", ") { it.displayName }
+        }
 
     val activeRightPartsSummary: String
         get() {

@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -37,6 +38,8 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Piano
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -45,6 +48,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -69,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.domain.model.AccompPart
 import com.example.domain.model.ArrangerScreen
+import com.example.domain.model.ArrangerSection
 import com.example.domain.model.ArrangerUiState
 import com.example.domain.model.BuiltInVoices
 import com.example.domain.model.DetectedChord
@@ -76,11 +82,14 @@ import com.example.domain.model.ImportedSourceUi
 import com.example.domain.model.KeyboardLayoutRange
 import com.example.domain.model.KeyboardPartTarget
 import com.example.domain.model.LibraryStyleItemUi
+import com.example.domain.model.RegistrationFreezeTarget
 import com.example.domain.model.SplitChordMode
 import com.example.domain.model.TouchVelocityCurve
 import com.example.domain.model.VoiceCategory
 import com.example.domain.model.VoicePreset
 import com.example.domain.model.WorshipSongUi
+import com.example.ui.theme.ChampagneGold
+import com.example.ui.theme.ChampagneGoldBright
 import com.example.ui.theme.ChassisBorder
 import com.example.ui.theme.ChassisDark
 import com.example.ui.theme.ChassisPanel
@@ -112,21 +121,31 @@ fun ExpandedWorkspaceOverlay(
     state: ArrangerUiState,
     onDismiss: () -> Unit,
     onSwitchScreen: (ArrangerScreen) -> Unit,
+    onSetMainMenuPage: (Int) -> Unit,
+    onTogglePanelLock: () -> Unit,
     onImportYamahaSetClick: () -> Unit,
     onImportOrgSetClick: () -> Unit,
     onImportSingleFileClick: () -> Unit,
     onSelectStyle: (String) -> Unit,
     onRemoveSource: (Long) -> Unit,
     onRemoveStyle: (String) -> Unit,
+    onSetStyleSearchQuery: (String) -> Unit,
+    onToggleFavoriteStyle: (String) -> Unit,
     onSelectPartVoice: (KeyboardPartTarget, VoicePreset) -> Unit,
     onTogglePartEnabled: (KeyboardPartTarget) -> Unit,
+    onToggleKeyboardPartSolo: (KeyboardPartTarget) -> Unit,
     onSetPartVolume: (KeyboardPartTarget, Float) -> Unit,
     onSetPartPan: (KeyboardPartTarget, Float) -> Unit,
     onSetPartOctave: (KeyboardPartTarget, Int) -> Unit,
     onSetPartNoteRange: (KeyboardPartTarget, Int, Int) -> Unit,
+    onSetVoiceSearchQuery: (String) -> Unit,
+    onToggleFavoriteVoice: (String) -> Unit,
+    onToggleHarmony: () -> Unit,
     onSetChannelVolume: (AccompPart, Float) -> Unit,
     onSetChannelPan: (AccompPart, Float) -> Unit,
     onToggleChannelMute: (AccompPart) -> Unit,
+    onToggleChannelSolo: (AccompPart) -> Unit,
+    onClearAccompSolo: () -> Unit,
     onSetMasterVolume: (Float) -> Unit,
     onSetAcmpBalance: (Float) -> Unit,
     onSetStyleVolume: (Float) -> Unit,
@@ -146,11 +165,35 @@ fun ExpandedWorkspaceOverlay(
     onSetSplitNote: (Int) -> Unit,
     onSetShowKeyLabels: (Boolean) -> Unit,
     onSetShowScrollbar: (Boolean) -> Unit,
+    onToggleAcmp: () -> Unit,
+    onToggleSplit: () -> Unit,
+    onAdjustOctave: (Int) -> Unit,
+    onAdjustTranspose: (Int) -> Unit,
     onSelectRegBank: (Int) -> Unit,
     onRecallRegSlot: (Int) -> Unit,
     onSaveRegSlot: (Int) -> Unit,
     onStepRegSequence: (Int) -> Unit,
     onToggleRegFreeze: () -> Unit,
+    onToggleRegFreezeTarget: (RegistrationFreezeTarget) -> Unit,
+    onToggleRegSequenceEnabled: () -> Unit,
+    onAddRegSequenceStep: (Int, Int) -> Unit,
+    onRemoveRegSequenceStepAt: (Int) -> Unit,
+    onMoveRegSequenceStep: (Int, Int) -> Unit,
+    onClearRegSequence: () -> Unit,
+    onJumpToRegSequenceStep: (Int) -> Unit,
+    onIntro: (ArrangerSection) -> Unit,
+    onMainVariation: (ArrangerSection) -> Unit,
+    onBreak: () -> Unit,
+    onEnding: (ArrangerSection) -> Unit,
+    onStartStop: () -> Unit,
+    onSyncStart: () -> Unit,
+    onSyncStop: () -> Unit,
+    onAutoFill: () -> Unit,
+    onFadeInOut: () -> Unit,
+    onToggleTempoLock: () -> Unit,
+    onToggleOtsLink: () -> Unit,
+    onTapTempo: () -> Unit,
+    onResetTempo: () -> Unit,
     onLoadWorshipSong: (WorshipSongUi) -> Unit,
     onAddWorshipSong: (String, String, String, String) -> Unit,
     onDeleteWorshipSong: (Long) -> Unit,
@@ -187,60 +230,70 @@ fun ExpandedWorkspaceOverlay(
                     color = Color.White,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.5.sp,
-                    maxLines = 1
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HeaderTab("MENU", state.activeScreen == ArrangerScreen.MAIN_MENU) { onSwitchScreen(ArrangerScreen.MAIN_MENU) }
                 HeaderTab("STYLES / SET", state.activeScreen == ArrangerScreen.STYLE_LIBRARY) { onSwitchScreen(ArrangerScreen.STYLE_LIBRARY) }
                 HeaderTab("VOICES", state.activeScreen == ArrangerScreen.VOICE_SELECT) { onSwitchScreen(ArrangerScreen.VOICE_SELECT) }
                 HeaderTab("MIXER & FX", state.activeScreen == ArrangerScreen.MIXER) { onSwitchScreen(ArrangerScreen.MIXER) }
                 HeaderTab("WORSHIP / REG", state.activeScreen == ArrangerScreen.PLAYLIST) { onSwitchScreen(ArrangerScreen.PLAYLIST) }
                 HeaderTab("PADS / LOOP", state.activeScreen == ArrangerScreen.MULTI_PAD_LOOPER) { onSwitchScreen(ArrangerScreen.MULTI_PAD_LOOPER) }
                 HeaderTab("UTILITY", state.activeScreen == ArrangerScreen.SETTINGS) { onSwitchScreen(ArrangerScreen.SETTINGS) }
-                IconButton(onClick = onDismiss, modifier = Modifier.testTag("workspace_close_button")) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_exit), tint = Color.White)
-                }
+            }
+
+            IconButton(onClick = onDismiss, modifier = Modifier.testTag("workspace_close_button")) {
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_exit), tint = Color.White)
             }
         }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (state.activeScreen) {
-                ArrangerScreen.STYLE_LIBRARY -> StyleAndSetInspectorWorkspace(
+                ArrangerScreen.MAIN_MENU -> MainMenuWorkspace(
                     state = state,
-                    onImportYamahaSetClick = onImportYamahaSetClick,
-                    onImportOrgSetClick = onImportOrgSetClick,
-                    onImportSingleFileClick = onImportSingleFileClick,
-                    onSelectStyle = onSelectStyle,
-                    onRemoveSource = onRemoveSource,
-                    onRemoveStyle = onRemoveStyle
+                    onSetMainMenuPage = onSetMainMenuPage,
+                    onOpenScreen = onSwitchScreen
                 )
-                ArrangerScreen.VOICE_SELECT -> VoiceAndPartWorkspace(
+                ArrangerScreen.CHANNEL_ON_OFF -> ChannelOnOffWorkspace(
                     state = state,
-                    onSelectPartVoice = onSelectPartVoice,
+                    onToggleChannelMute = onToggleChannelMute,
+                    onToggleChannelSolo = onToggleChannelSolo,
+                    onClearAccompSolo = onClearAccompSolo,
                     onTogglePartEnabled = onTogglePartEnabled,
+                    onOpenMixer = { onSwitchScreen(ArrangerScreen.MIXER) }
+                )
+                ArrangerScreen.VOICE_PART_SETUP -> VoicePartSetupWorkspace(
+                    state = state,
+                    onTogglePartEnabled = onTogglePartEnabled,
+                    onToggleKeyboardPartSolo = onToggleKeyboardPartSolo,
                     onSetPartVolume = onSetPartVolume,
                     onSetPartPan = onSetPartPan,
                     onSetPartOctave = onSetPartOctave,
                     onSetPartNoteRange = onSetPartNoteRange,
-                    onImportWavSampleClick = onImportSingleFileClick
+                    onToggleHarmony = onToggleHarmony,
+                    onOpenVoiceBrowser = { onSwitchScreen(ArrangerScreen.VOICE_SELECT) }
                 )
-                ArrangerScreen.MIXER -> MixerAndEffectsWorkspace(
+                ArrangerScreen.SPLIT_FINGERING -> SplitAndFingeringWorkspace(
                     state = state,
-                    onSetChannelVolume = onSetChannelVolume,
-                    onSetChannelPan = onSetChannelPan,
-                    onToggleChannelMute = onToggleChannelMute,
-                    onSetMasterVolume = onSetMasterVolume,
-                    onSetAcmpBalance = onSetAcmpBalance,
-                    onSetStyleVolume = onSetStyleVolume,
-                    onToggleDsp = onToggleDsp,
-                    onSetReverbDepth = onSetReverbDepth,
-                    onSetChorusDepth = onSetChorusDepth,
-                    onSetEqBass = onSetEqBass,
-                    onSetEqMid = onSetEqMid,
-                    onSetEqTreble = onSetEqTreble
+                    onToggleAcmp = onToggleAcmp,
+                    onToggleSplit = onToggleSplit,
+                    onSetChordMode = onSetChordMode,
+                    onSetSplitNote = onSetSplitNote,
+                    onAdjustOctave = onAdjustOctave,
+                    onAdjustTranspose = onAdjustTranspose
                 )
+                ArrangerScreen.REGISTRATION_MEMORY,
                 ArrangerScreen.PLAYLIST -> WorshipAndRegistrationWorkspace(
                     state = state,
                     onSelectBank = onSelectRegBank,
@@ -252,6 +305,78 @@ fun ExpandedWorkspaceOverlay(
                     onAddCurrentAsWorshipSong = onAddWorshipSong,
                     onDeleteWorshipSong = onDeleteWorshipSong
                 )
+                ArrangerScreen.REGISTRATION_FREEZE -> RegistrationFreezeWorkspace(
+                    state = state,
+                    onToggleRegFreeze = onToggleRegFreeze,
+                    onToggleFreezeTarget = onToggleRegFreezeTarget
+                )
+                ArrangerScreen.REGISTRATION_SEQUENCE -> RegistrationSequenceWorkspace(
+                    state = state,
+                    onToggleSequenceEnabled = onToggleRegSequenceEnabled,
+                    onAddStep = onAddRegSequenceStep,
+                    onRemoveStepAt = onRemoveRegSequenceStepAt,
+                    onMoveStep = onMoveRegSequenceStep,
+                    onClearSequence = onClearRegSequence,
+                    onJumpToStep = onJumpToRegSequenceStep,
+                    onStepSequence = onStepRegSequence
+                )
+                ArrangerScreen.STYLE_SETTINGS -> StyleSettingsWorkspace(
+                    state = state,
+                    onIntro = onIntro,
+                    onMainVariation = onMainVariation,
+                    onBreak = onBreak,
+                    onEnding = onEnding,
+                    onStartStop = onStartStop,
+                    onSyncStart = onSyncStart,
+                    onSyncStop = onSyncStop,
+                    onAutoFill = onAutoFill,
+                    onFadeInOut = onFadeInOut,
+                    onToggleTempoLock = onToggleTempoLock,
+                    onToggleOtsLink = onToggleOtsLink,
+                    onTapTempo = onTapTempo,
+                    onResetTempo = onResetTempo,
+                    onSetAcmpBalance = onSetAcmpBalance,
+                    onSetStyleVolume = onSetStyleVolume
+                )
+                ArrangerScreen.STYLE_LIBRARY -> StyleAndSetInspectorWorkspace(
+                    state = state,
+                    onImportYamahaSetClick = onImportYamahaSetClick,
+                    onImportOrgSetClick = onImportOrgSetClick,
+                    onImportSingleFileClick = onImportSingleFileClick,
+                    onSelectStyle = onSelectStyle,
+                    onRemoveSource = onRemoveSource,
+                    onRemoveStyle = onRemoveStyle,
+                    onSetStyleSearchQuery = onSetStyleSearchQuery,
+                    onToggleFavoriteStyle = onToggleFavoriteStyle
+                )
+                ArrangerScreen.VOICE_SELECT -> VoiceAndPartWorkspace(
+                    state = state,
+                    onSelectPartVoice = onSelectPartVoice,
+                    onTogglePartEnabled = onTogglePartEnabled,
+                    onSetPartVolume = onSetPartVolume,
+                    onSetPartPan = onSetPartPan,
+                    onSetPartOctave = onSetPartOctave,
+                    onSetPartNoteRange = onSetPartNoteRange,
+                    onImportWavSampleClick = onImportSingleFileClick,
+                    onSetVoiceSearchQuery = onSetVoiceSearchQuery,
+                    onToggleFavoriteVoice = onToggleFavoriteVoice
+                )
+                ArrangerScreen.MIXER -> MixerAndEffectsWorkspace(
+                    state = state,
+                    onSetChannelVolume = onSetChannelVolume,
+                    onSetChannelPan = onSetChannelPan,
+                    onToggleChannelMute = onToggleChannelMute,
+                    onToggleChannelSolo = onToggleChannelSolo,
+                    onSetMasterVolume = onSetMasterVolume,
+                    onSetAcmpBalance = onSetAcmpBalance,
+                    onSetStyleVolume = onSetStyleVolume,
+                    onToggleDsp = onToggleDsp,
+                    onSetReverbDepth = onSetReverbDepth,
+                    onSetChorusDepth = onSetChorusDepth,
+                    onSetEqBass = onSetEqBass,
+                    onSetEqMid = onSetEqMid,
+                    onSetEqTreble = onSetEqTreble
+                )
                 ArrangerScreen.MULTI_PAD_LOOPER -> MultiPadAndChordLooperWorkspace(
                     state = state,
                     onTriggerMultiPad = onTriggerMultiPad,
@@ -259,6 +384,15 @@ fun ExpandedWorkspaceOverlay(
                     onToggleChordLooperRecord = onToggleChordLooperRecord,
                     onToggleChordLooperPlay = onToggleChordLooperPlay,
                     onClearChordLoop = onClearChordLoop
+                )
+                ArrangerScreen.MIDI_SETTINGS -> MidiWorkspace(state = state)
+                ArrangerScreen.FILE_MANAGER -> FileManagerWorkspace(
+                    state = state,
+                    onImportYamahaSetClick = onImportYamahaSetClick,
+                    onImportOrgSetClick = onImportOrgSetClick,
+                    onImportSingleFileClick = onImportSingleFileClick,
+                    onRemoveSource = onRemoveSource,
+                    onOpenStyleLibrary = { onSwitchScreen(ArrangerScreen.STYLE_LIBRARY) }
                 )
                 ArrangerScreen.SETTINGS -> UtilityAndKeyboardSettingsWorkspace(
                     state = state,
@@ -272,6 +406,22 @@ fun ExpandedWorkspaceOverlay(
                     onSetShowScrollbar = onSetShowScrollbar,
                     onSetMasterTuneHz = onSetMasterTuneHz,
                     onSetAudioBufferFrames = onSetAudioBufferFrames
+                )
+                ArrangerScreen.SYSTEM_SETTINGS -> SystemSettingsWorkspace(
+                    state = state,
+                    onSetMasterTuneHz = onSetMasterTuneHz,
+                    onSetAudioBufferFrames = onSetAudioBufferFrames,
+                    onTogglePanelLock = onTogglePanelLock
+                )
+                ArrangerScreen.SONG_PLAYER -> PlannedFeatureWorkspace(
+                    title = "Song Player",
+                    summary = "Status: Planned (Not yet implemented in this release)",
+                    details = "Full Standard MIDI File (SMF) & audio backing-track transport deck with lyrics/score marker sync is planned for a future stage. Currently, SMF patterns imported via Style & SET Library can be auditioned inside the Style engine."
+                )
+                ArrangerScreen.SONG_RECORDING -> PlannedFeatureWorkspace(
+                    title = "Song Recording",
+                    summary = "Status: Planned (Not yet implemented in this release)",
+                    details = "Live WAV audio capture and multi-track MIDI performance recording are planned for a future stage. Use Chord Looper or Registration Memory today to store chord progressions and panel setups offline."
                 )
                 ArrangerScreen.PERFORMANCE -> Unit
             }
@@ -304,22 +454,27 @@ private fun StyleAndSetInspectorWorkspace(
     onImportSingleFileClick: () -> Unit,
     onSelectStyle: (String) -> Unit,
     onRemoveSource: (Long) -> Unit,
-    onRemoveStyle: (String) -> Unit
+    onRemoveStyle: (String) -> Unit,
+    onSetStyleSearchQuery: (String) -> Unit,
+    onToggleFavoriteStyle: (String) -> Unit
 ) {
-    var filterTab by remember { mutableStateOf("ALL") } // ALL, YAMAHA, ORG, BUILTIN
+    var filterTab by remember { mutableStateOf("ALL") } // ALL, FAV, YAMAHA, ORG, BUILTIN
     var selectedSourceId by remember { mutableStateOf<Long?>(null) }
     var inspectedItem by remember { mutableStateOf<LibraryStyleItemUi?>(null) }
 
-    val filteredStyles = remember(state.libraryStyles, filterTab, selectedSourceId) {
+    val filteredStyles = remember(state.libraryStyles, filterTab, selectedSourceId, state.styleSearchQuery, state.favoriteStyleIds) {
+        val q = state.styleSearchQuery.trim().lowercase()
         state.libraryStyles.filter { item ->
             val tabMatch = when (filterTab) {
+                "FAV" -> item.id in state.favoriteStyleIds
                 "YAMAHA" -> item.setFamily == "YAMAHA_SET"
                 "ORG" -> item.setFamily == "ORG_SET"
                 "BUILTIN" -> item.isBuiltIn
                 else -> true
             }
             val srcMatch = selectedSourceId == null || item.sourceId == selectedSourceId
-            tabMatch && srcMatch
+            val queryMatch = q.isEmpty() || item.name.lowercase().contains(q) || item.category.lowercase().contains(q)
+            tabMatch && srcMatch && queryMatch
         }
     }
 
@@ -411,12 +566,31 @@ private fun StyleAndSetInspectorWorkspace(
                 .padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 FilterPill("All (${state.libraryStyles.size})", filterTab == "ALL") { filterTab = "ALL"; selectedSourceId = null }
+                FilterPill("Favorites (${state.favoriteStyleIds.size})", filterTab == "FAV") { filterTab = "FAV"; selectedSourceId = null }
                 FilterPill("Yamaha SET", filterTab == "YAMAHA") { filterTab = "YAMAHA" }
                 FilterPill("ORG.SET", filterTab == "ORG") { filterTab = "ORG" }
-                FilterPill("Built-In Worship/Ethio", filterTab == "BUILTIN") { filterTab = "BUILTIN"; selectedSourceId = null }
+                FilterPill("Built-In", filterTab == "BUILTIN") { filterTab = "BUILTIN"; selectedSourceId = null }
             }
+
+            OutlinedTextField(
+                value = state.styleSearchQuery,
+                onValueChange = onSetStyleSearchQuery,
+                placeholder = { Text(stringResource(R.string.label_search_styles), fontSize = 11.sp, color = SilkscreenMuted) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = PsrNeonBlueGlow,
+                    unfocusedBorderColor = ChassisBorder
+                ),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            )
 
             // Detailed File Inspection Banner when an item is inspected
             inspectedItem?.let { item ->
@@ -444,6 +618,8 @@ private fun StyleAndSetInspectorWorkspace(
                     StyleRow(
                         item = item,
                         isActive = item.id == state.activeStyle.id,
+                        isFavorite = item.id in state.favoriteStyleIds,
+                        onToggleFavorite = { onToggleFavoriteStyle(item.id) },
                         onInspect = { inspectedItem = item },
                         onLoad = { onSelectStyle(item.id) },
                         onDelete = if (!item.isBuiltIn) ({ onRemoveStyle(item.id) }) else null
@@ -492,6 +668,8 @@ private fun ImportedSourceRow(
 private fun StyleRow(
     item: LibraryStyleItemUi,
     isActive: Boolean,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onInspect: () -> Unit,
     onLoad: () -> Unit,
     onDelete: (() -> Unit)?
@@ -551,6 +729,14 @@ private fun StyleRow(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = "Favorite Style",
+                    tint = if (isFavorite) ChampagneGoldBright else SilkscreenMuted,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
             IconButton(onClick = onInspect, modifier = Modifier.size(28.dp)) {
                 Icon(Icons.Default.Info, contentDescription = "Inspect file", tint = PsrNeonBlueGlow, modifier = Modifier.size(16.dp))
             }
@@ -584,14 +770,23 @@ private fun VoiceAndPartWorkspace(
     onSetPartPan: (KeyboardPartTarget, Float) -> Unit,
     onSetPartOctave: (KeyboardPartTarget, Int) -> Unit,
     onSetPartNoteRange: (KeyboardPartTarget, Int, Int) -> Unit,
-    onImportWavSampleClick: () -> Unit
+    onImportWavSampleClick: () -> Unit,
+    onSetVoiceSearchQuery: (String) -> Unit,
+    onToggleFavoriteVoice: (String) -> Unit
 ) {
     var activeTarget by remember { mutableStateOf(KeyboardPartTarget.RIGHT_1) }
     var selectedCategory by remember { mutableStateOf<VoiceCategory?>(null) }
+    var favoritesOnly by remember { mutableStateOf(false) }
 
     val allVoices = remember(state.userSampleVoices) { BuiltInVoices.all + state.userSampleVoices }
-    val filtered = remember(allVoices, selectedCategory) {
-        if (selectedCategory == null) allVoices else allVoices.filter { it.category == selectedCategory }
+    val filtered = remember(allVoices, selectedCategory, favoritesOnly, state.voiceSearchQuery, state.favoriteVoiceIds) {
+        val q = state.voiceSearchQuery.trim().lowercase()
+        allVoices.filter { v ->
+            val catMatch = selectedCategory == null || v.category == selectedCategory
+            val favMatch = !favoritesOnly || v.id in state.favoriteVoiceIds
+            val queryMatch = q.isEmpty() || v.name.lowercase().contains(q) || v.description.lowercase().contains(q)
+            catMatch && favMatch && queryMatch
+        }
     }
     val activePartConfig = state.partConfig(activeTarget)
 
@@ -704,12 +899,26 @@ private fun VoiceAndPartWorkspace(
             }
         }
 
-        // Category Filter Row + Import WAV Sample button
+        // Category Filter Row + Search + Favorites + Import WAV Sample button
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = state.voiceSearchQuery,
+                onValueChange = onSetVoiceSearchQuery,
+                placeholder = { Text(stringResource(R.string.label_search_voices), fontSize = 10.5.sp, color = SilkscreenMuted) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = PsrNeonBlueGlow,
+                    unfocusedBorderColor = ChassisBorder
+                ),
+                modifier = Modifier.width(175.dp).height(48.dp)
+            )
             LazyRow(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                item { FilterPill("All (${allVoices.size})", selectedCategory == null) { selectedCategory = null } }
+                item { FilterPill("All (${allVoices.size})", selectedCategory == null && !favoritesOnly) { selectedCategory = null; favoritesOnly = false } }
+                item { FilterPill("Favorites (${state.favoriteVoiceIds.size})", favoritesOnly) { favoritesOnly = !favoritesOnly } }
                 items(VoiceCategory.entries) { cat ->
-                    FilterPill(cat.displayName, selectedCategory == cat) { selectedCategory = cat }
+                    FilterPill(cat.displayName, selectedCategory == cat) { selectedCategory = cat; favoritesOnly = false }
                 }
             }
             OutlinedButton(
@@ -729,6 +938,7 @@ private fun VoiceAndPartWorkspace(
         ) {
             items(filtered, key = { it.id }) { voice ->
                 val isSelected = voice.id == activePartConfig.voice.id
+                val isFav = voice.id in state.favoriteVoiceIds
                 Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(7.dp))
@@ -742,9 +952,14 @@ private fun VoiceAndPartWorkspace(
                         .padding(9.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(voice.category.displayName.uppercase(), color = if (isSelected) Color(0xFFD6EEFF) else PsrActiveOrange, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 8.5.sp)
-                        Icon(Icons.Default.Piano, contentDescription = null, tint = if (isSelected) Color.White else SilkscreenMuted, modifier = Modifier.size(13.dp))
+                        Icon(
+                            imageVector = if (isFav) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = "Favorite Voice",
+                            tint = if (isFav) ChampagneGoldBright else if (isSelected) Color.White else SilkscreenMuted,
+                            modifier = Modifier.size(15.dp).clickable { onToggleFavoriteVoice(voice.id) }
+                        )
                     }
                     Text(voice.name, color = Color.White, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 12.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(voice.description, color = if (isSelected) Color(0xFFD8EEFF) else SilkscreenMuted, fontFamily = InterFamily, fontSize = 9.5.sp, lineHeight = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -835,6 +1050,7 @@ private fun MixerAndEffectsWorkspace(
     onSetChannelVolume: (AccompPart, Float) -> Unit,
     onSetChannelPan: (AccompPart, Float) -> Unit,
     onToggleChannelMute: (AccompPart) -> Unit,
+    onToggleChannelSolo: (AccompPart) -> Unit,
     onSetMasterVolume: (Float) -> Unit,
     onSetAcmpBalance: (Float) -> Unit,
     onSetStyleVolume: (Float) -> Unit,
@@ -943,18 +1159,33 @@ private fun MixerAndEffectsWorkspace(
                         }
                     )
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(25.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(if (ch.isMuted) LedCrimson else ChassisSurface)
-                            .border(1.dp, if (ch.isMuted) LedCrimson else ChassisBorder, RoundedCornerShape(4.dp))
-                            .testTag("mixer_mute_${ch.part.name.lowercase()}")
-                            .clickable { onToggleChannelMute(ch.part) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(if (ch.isMuted) "MUTE" else "ON", color = Color.White, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(25.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (ch.isMuted) LedCrimson else ChassisSurface)
+                                .border(1.dp, if (ch.isMuted) LedCrimson else ChassisBorder, RoundedCornerShape(4.dp))
+                                .testTag("mixer_mute_${ch.part.name.lowercase()}")
+                                .clickable { onToggleChannelMute(ch.part) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(if (ch.isMuted) "MUTE" else "ON", color = Color.White, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 8.5.sp)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(0.8f)
+                                .height(25.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (ch.isSoloed) ChampagneGold else ChassisDark)
+                                .border(1.dp, if (ch.isSoloed) ChampagneGoldBright else ChassisBorder, RoundedCornerShape(4.dp))
+                                .testTag("mixer_solo_${ch.part.name.lowercase()}")
+                                .clickable { onToggleChannelSolo(ch.part) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("S", color = if (ch.isSoloed) Color.Black else ChampagneGoldBright, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 8.5.sp)
+                        }
                     }
                 }
             }
@@ -1080,7 +1311,7 @@ private fun UtilityAndKeyboardSettingsWorkspace(
                 icon = Icons.Default.GraphicEq,
                 title = "Real-Time Audio Engine Status",
                 body = if (state.audioEngineRunning) {
-                    "RUNNING • 44.1kHz Stereo 16-bit PCM Low-Latency AudioTrack • 36 Melodic + 16 Drum Voices • Stereo Reverb, Chorus & 3-Band EQ • Zero-allocation audio loop."
+                    "RUNNING • 44.1kHz Stereo 16-bit PCM AudioTrack (Low-Latency mode) • Voice pool: 64 melodic + 16 drum slots (full simultaneous polyphony unverified on device) • Stereo Reverb, Chorus, 3-Band EQ & soft limiter."
                 } else "Standby",
                 accent = LedEmerald
             )
@@ -1097,7 +1328,7 @@ private fun UtilityAndKeyboardSettingsWorkspace(
             InfoCard(
                 icon = Icons.Default.Info,
                 title = "Feature Scope & Honest Status",
-                body = "Implemented: PSR-SX900 console, 49–88 scrollable keyboard, 8-part arranger, Right 1/2/Left layering, Harmony, Reverb/Chorus/EQ, Registration Banks 1–4 + Freeze, Worship Setlist, Chord Looper, Yamaha SFF/SMF & ORG.SET inspectors, PCM WAV samples.\nPlanned next: SoundFont2 (.sf2) multi-zone engine, Song/Audio WAV Recorder, Style Creator editor, and native Korg KORF decoder.",
+                body = "Implemented: PSR-SX900-inspired console, 49–88 scrollable keyboard, 4-part keyboard routing (LEFT, RIGHT 1, RIGHT 2, RIGHT 3 with independent enable/voice/volume/pan/octave/range), 8-part built-in arranger, Chord Harmony, Reverb/Chorus/3-Band EQ, Registration Banks 1–4 + Freeze, Worship Setlist, Multi-Pads & Chord Looper, USB/BT MIDI input.\nPartially implemented: Yamaha .sty/SMF & ORG.SET file inspection with root-transposition SMF playback, single-shot PCM WAV user samples (8s cap, no loop points), and procedural built-in synth voices.\nPlanned: SoundFont2 (.sf2) multi-zone sample engine, Audio/Song WAV Recorder, full Yamaha CASM NTR/NTT playback, Style Creator editor, and native Korg KORF decoder.",
                 accent = PsrActiveOrange
             )
 

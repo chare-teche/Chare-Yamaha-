@@ -13,4 +13,26 @@
     <string name="cd_start_stop">Start or Stop Accompaniment</string>
     <string name="cd_jog_dial">Data Entry Jog Dial</string>
     <string name="cd_pitch_joystick">Pitch Bend and Modulation Joystick</string>
+    <string name="screen_main_menu">Main Menu</string>
+    <string name="screen_channel_on_off">Channel On/Off</string>
+    <string name="screen_voice_part_setup">Voice Part Setup</string>
+    <string name="screen_split_fingering">Split &amp; Fingering</string>
+    <string name="screen_registration_memory">Registration Memory</string>
+    <string name="screen_registration_freeze">Registration Freeze</string>
+    <string name="screen_registration_sequence">Registration Sequence</string>
+    <string name="screen_style_settings">Style Settings</string>
+    <string name="screen_song_player">Song Player</string>
+    <string name="screen_song_recording">Song Recording</string>
+    <string name="screen_midi">MIDI</string>
+    <string name="screen_file_manager">File Manager</string>
+    <string name="screen_utility">Utility</string>
+    <string name="screen_system_settings">System Settings</string>
+    <string name="menu_page_1">Menu 1</string>
+    <string name="menu_page_2">Menu 2</string>
+    <string name="label_search_styles">Search styles…</string>
+    <string name="label_search_voices">Search voices…</string>
+    <string name="label_favorites">Favorites</string>
+    <string name="label_solo">Solo</string>
+    <string name="label_mute">Mute</string>
+    <string name="label_planned_badge">PLANNED</string>
 </resources>
